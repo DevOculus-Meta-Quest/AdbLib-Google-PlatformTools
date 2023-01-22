@@ -15,6 +15,7 @@
  */
 package com.android.adblib
 
+import com.android.adblib.AdbLibProperties.TRACK_DEVICES_RETRY_DELAY
 import com.android.adblib.AdbSession.Companion.create
 import com.android.adblib.CoroutineScopeCache.Key
 import com.android.adblib.impl.AdbSessionImpl
@@ -153,6 +154,10 @@ suspend fun <R> AdbSession.withErrorTimeout(timeout: Duration, block: suspend Co
     return host.timeProvider.withErrorTimeout(timeout, block)
 }
 
+fun <T: Any> AdbSession.property(property: AdbSessionHost.Property<T>): T {
+    return host.getPropertyValue(property)
+}
+
 /**
  * Exception thrown when accessing services of an [AdbSession] that has been closed.
  */
@@ -210,7 +215,7 @@ class ClosedSessionException(message: String) : CancellationException(message)
  * [long format][AdbHostServices.DeviceInfoFormat.LONG_FORMAT].
  */
 fun AdbSession.trackDevices(
-    retryDelay: Duration = Duration.ofSeconds(2)
+    retryDelay: Duration = property(TRACK_DEVICES_RETRY_DELAY)
 ): StateFlow<TrackedDeviceList> {
     data class MyKey(val duration: Duration) : Key<SessionDeviceTracker>("trackDevices")
 
