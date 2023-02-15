@@ -41,7 +41,7 @@ enum class DeviceState(val state: String) {
     /**
      * Unknown state, i.e. a state that we somehow did not recognize
      */
-    UNKNOWN("unkonwn"),
+    UNKNOWN("unknown"),
 
     /**
      * bootloader mode with is-userspace = true though `adb reboot fastboot`
