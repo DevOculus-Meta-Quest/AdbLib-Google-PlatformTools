@@ -15,17 +15,18 @@
  */
 package com.android.adblib.testingutils
 
-import com.android.adblib.AdbSessionHost
 import com.android.adblib.AdbLogger
-import com.android.adblib.impl.TimeoutTracker
+import com.android.adblib.AdbSessionHost
 import kotlinx.coroutines.CoroutineExceptionHandler
 import java.time.Instant
-import java.util.concurrent.TimeUnit
+import java.util.concurrent.ConcurrentHashMap
 
 class TestingAdbSessionHost : AdbSessionHost() {
 
     val uncaughtExceptions = mutableListOf<Throwable>()
     var overrideUtcNow: Instant? = null
+
+    private val systemProperties = ConcurrentHashMap<String, Any>()
 
     override val loggerFactory: TestingAdbLoggerFactory by lazy {
         TestingAdbLoggerFactory()
@@ -41,12 +42,26 @@ class TestingAdbSessionHost : AdbSessionHost() {
             logger.error(exception, "Unhandled exception in $ctx")
         }
 
-    override fun close() {
-        logger.debug { "Testing AbbListHost closed" }
+    override fun <T : Any> getPropertyValue(property: Property<T>): T {
+        val value = systemProperties[property.name]
+        return if (value != null) {
+            @Suppress("UNCHECKED_CAST")
+            value as T
+        } else {
+            property.defaultValue
+        }
     }
 
-    internal fun newTimeout(timeout: Long, unit: TimeUnit): TimeoutTracker {
-        return TimeoutTracker(timeProvider, timeout, unit)
+    fun <T : Any> removePropertyValue(property: Property<T>) {
+       systemProperties.remove(property.name)
+    }
+
+    fun <T : Any> setPropertyValue(property: Property<T>, value: T) {
+        systemProperties[property.name] = value
+    }
+
+    override fun close() {
+        logger.debug { "TestingAdbSessionHost closed" }
     }
 }
 
