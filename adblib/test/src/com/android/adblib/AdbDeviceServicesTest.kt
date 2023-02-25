@@ -2669,7 +2669,7 @@ class AdbDeviceServicesTest {
     }
 
     private fun addProfileableProcess(fakeDevice: DeviceState, pid: Int): ProfileableProcessState {
-        return fakeDevice.startProfileableProcess(pid, "x86")
+        return fakeDevice.startProfileableProcess(pid, "x86", "")
     }
 
     class ByteBufferShellCollector : ShellCollector<ByteBuffer> {
