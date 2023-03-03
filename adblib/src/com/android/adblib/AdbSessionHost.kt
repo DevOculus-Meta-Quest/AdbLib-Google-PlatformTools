@@ -26,6 +26,7 @@ import kotlinx.coroutines.SupervisorJob
 import java.nio.channels.AsynchronousChannelGroup
 import java.time.Duration
 import java.time.Instant
+import java.util.concurrent.ConcurrentHashMap
 import javax.swing.SwingUtilities
 import kotlin.coroutines.CoroutineContext
 import kotlin.coroutines.EmptyCoroutineContext
@@ -36,7 +37,7 @@ import kotlin.coroutines.EmptyCoroutineContext
  */
 open class AdbSessionHost : AutoCloseable {
 
-    private val loggingFilter = OnlyOnceFilter()
+    private val loggingFilter = OnlyOnceFilter<Property<*>>()
 
     /**
      * The [SystemNanoTimeProvider] for this host.
@@ -114,7 +115,7 @@ open class AdbSessionHost : AutoCloseable {
             property.fromStringValue(propertyValue)
         } catch (t: Throwable) {
             // We log only once per property to prevent spamming the log
-            loggingFilter.filter(property.name) {
+            loggingFilter.filter(property) {
                 logger.warn(
                     t,
                     "Invalid or unsupported value '$propertyValue' for property " +
@@ -148,14 +149,39 @@ open class AdbSessionHost : AutoCloseable {
     /**
      * A named value of type [T] that has a [defaultValue] and can be deserialized from
      * a string value as needed.
+     *
+     * All property instances are expected to be unique, i.e. have identity equality.
      */
-    abstract class Property<T : Any>(val name: String, val defaultValue: T) {
+    abstract class Property<T : Any>(
+        /**
+         * The identifier of the property, typically in a java package name
+         * format (e.g. `foo.bar.blah`)
+         */
+        val name: String,
+        /**
+         * The default value of the property, if not overridden
+         */
+        val defaultValue: T,
+        /**
+         * Whether the property value can change at runtime, i.e. whether it is safe to
+         * cache the property value.
+         */
+        val isVolatile: Boolean = false
+    ) {
 
         /**
          * Convert a string value to a valid value for this property.
          * Throws any [Throwable] exception if the conversion failed for any reason.
          */
         abstract fun fromStringValue(value: String): T
+
+        override fun hashCode(): Int {
+            return System.identityHashCode(this)
+        }
+
+        override fun equals(other: Any?): Boolean {
+            return this === other
+        }
 
         override fun toString(): String {
             return "Property(name=\"$name\", " +
@@ -172,46 +198,45 @@ open class AdbSessionHost : AutoCloseable {
         }
     }
 
-    class StringProperty(name: String, defaultValue: String) : Property<String>(
-        name,
-        defaultValue
-    ) {
+    class StringProperty(name: String, defaultValue: String, isVolatile: Boolean = false)
+        : Property<String>(name, defaultValue, isVolatile) {
 
         override fun fromStringValue(value: String): String {
             return value
         }
     }
 
-    class IntProperty(name: String, defaultValue: Int) : Property<Int>(name, defaultValue) {
+    class IntProperty(name: String, defaultValue: Int, isVolatile: Boolean = false)
+        : Property<Int>(name, defaultValue, isVolatile) {
 
         override fun fromStringValue(value: String): Int {
             return value.toInt()
         }
     }
 
-    class DurationProperty(name: String, defaultValue: Duration) : Property<Duration>(
-        name,
-        defaultValue
-    ) {
+    class BooleanProperty(name: String, defaultValue: Boolean, isVolatile: Boolean = false)
+        : Property<Boolean>(name, defaultValue, isVolatile) {
+
+        override fun fromStringValue(value: String): Boolean {
+            return value.toBoolean()
+        }
+    }
+
+    class DurationProperty(name: String, defaultValue: Duration, isVolatile: Boolean = false) :
+        Property<Duration>(name, defaultValue, isVolatile) {
 
         override fun fromStringValue(value: String): Duration {
             return Duration.parse(value)
         }
     }
 
-    private class OnlyOnceFilter {
+    private class OnlyOnceFilter<T: Any> {
 
-        private val seenKeys = hashSetOf<String>()
+        private val seenKeys = ConcurrentHashMap.newKeySet<T>()
 
-        inline fun filter(key: String, block: () -> Unit) {
-            if (addKey(key)) {
+        inline fun filter(key: T, block: () -> Unit) {
+            if (seenKeys.add(key)) {
                 block()
-            }
-        }
-
-        private fun addKey(key: String): Boolean {
-            return synchronized(seenKeys) {
-                seenKeys.add(key)
             }
         }
     }
