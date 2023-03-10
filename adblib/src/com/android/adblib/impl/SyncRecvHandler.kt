@@ -160,6 +160,8 @@ internal class SyncRecvHandler(
                     buffer.getInt() // Consume 'FAIL'
                     val length = buffer.getInt() // Consume length
                     serviceRunner.readSyncFailMessageAndThrow(
+                        device,
+                        "sync-recv('$remoteFilePath')",
                         deviceChannel,
                         workBuffer,
                         length,

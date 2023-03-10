@@ -17,7 +17,10 @@ package com.android.adblib.impl.services
 
 import com.android.adblib.AdbChannel
 import com.android.adblib.AdbChannelProvider
+import com.android.adblib.AdbDeviceFailResponseException
 import com.android.adblib.AdbFailResponseException
+import com.android.adblib.AdbHostFailResponseException
+import com.android.adblib.AdbHostServices
 import com.android.adblib.AdbInputChannel
 import com.android.adblib.AdbSessionHost
 import com.android.adblib.AdbSession
@@ -68,16 +71,7 @@ internal class AdbServiceRunner(val session: AdbSession, private val channelProv
         service: String,
         timeout: TimeoutTracker
     ): AdbChannel {
-        val logPrefix = "Running ADB server query \"${service}\" -"
-        logger.debug { "$logPrefix opening connection to ADB server, timeout=$timeout" }
-        channelProvider.createChannel(timeout).closeOnException { channel ->
-            logger.debug { "$logPrefix sending request to ADB server, timeout=$timeout" }
-            sendAdbServiceRequest(channel, workBuffer, service, timeout)
-            logger.debug { "$logPrefix receiving response from ADB server, timeout=$timeout" }
-            consumeOkayFailResponse(channel, workBuffer, timeout)
-            workBuffer.clear()
-            return channel
-        }
+        return startHostQueryImpl(workBuffer, device = null, service, timeout)
     }
 
     /**
@@ -103,7 +97,7 @@ internal class AdbServiceRunner(val session: AdbSession, private val channelProv
     ): String? {
         val workBuffer = newResizableBuffer()
         val service = device.hostPrefix + ":" + query
-        return startHostQuery(workBuffer, service, timeout).use { channel ->
+        return startHostQueryImpl(workBuffer, device, service, timeout).use { channel ->
             readOkayFailString(channel, workBuffer, service, timeout, okayData)
         }
     }
@@ -123,10 +117,10 @@ internal class AdbServiceRunner(val session: AdbSession, private val channelProv
     ): String? {
         val workBuffer = newResizableBuffer()
         val service = device.hostPrefix + ":" + query
-        return startHostQuery(workBuffer, service, timeout).use { channel ->
+        return startHostQueryImpl(workBuffer, device, service, timeout).use { channel ->
             // We receive 2 OKAY answers from the ADB Host: 1st OKAY is connect, 2nd OKAY is status.
             // See https://cs.android.com/android/platform/superproject/+/3a52886262ae22477a7d8ffb12adba64daf6aafa:packages/modules/adb/adb.cpp;l=1058
-            consumeOkayFailResponse(channel, workBuffer, timeout)
+            consumeOkayFailResponse(device, query, channel, workBuffer, timeout)
             readOkayFailString(channel, workBuffer, service, timeout, okayData)
         }
     }
@@ -137,7 +131,10 @@ internal class AdbServiceRunner(val session: AdbSession, private val channelProv
      */
     suspend fun runHostQuery(service: String, timeout: TimeoutTracker): String {
         return runHostQuery(service, timeout, OkayDataExpectation.EXPECTED)
-            ?: throw AdbProtocolErrorException("Data segment expected after OKAY response")
+            ?: run {
+                //TODO: metrics
+                throw AdbProtocolErrorException("Data segment expected after OKAY response")
+            }
     }
 
     /**
@@ -150,8 +147,38 @@ internal class AdbServiceRunner(val session: AdbSession, private val channelProv
         okayData: OkayDataExpectation
     ): String? {
         val workBuffer = newResizableBuffer()
-        return startHostQuery(workBuffer, service, timeout).use { channel ->
+        return startHostQueryImpl(workBuffer, device = null, service, timeout).use { channel ->
             readOkayFailString(channel, workBuffer, service, timeout, okayData)
+        }
+    }
+
+    /**
+     * Opens an [AdbChannel] and invokes a [service] on the ADB host, then waits for an OKAY/FAIL
+     * response. The [device] parameter is optional, as some host services apply to the ADB host
+     * itself (e.g. [AdbHostServices.version]) or to a specific [DeviceSelector] connected to
+     * the ADB host (e.g. [AdbHostServices.forward]).
+     *
+     * In case of OKAY response, the returned [AdbChannel] is open and ready for the next steps
+     * of the communication protocol.
+     *
+     * In case of FAIL response, an [AdbFailResponseException] exception is thrown. The exception
+     * contains the error message included in the FAIL response.
+     */
+    private suspend fun startHostQueryImpl(
+        workBuffer: ResizableBuffer,
+        device: DeviceSelector?,
+        service: String,
+        timeout: TimeoutTracker
+    ): AdbChannel {
+        val logPrefix = "Running ADB server query \"${service}\" -"
+        logger.debug { "$logPrefix opening connection to ADB server, timeout=$timeout" }
+        channelProvider.createChannel(timeout).closeOnException { channel ->
+            logger.debug { "$logPrefix sending request to ADB server, timeout=$timeout" }
+            sendAdbServiceRequest(channel, workBuffer, service, timeout)
+            logger.debug { "$logPrefix receiving response from ADB server, timeout=$timeout" }
+            consumeOkayFailResponse(device, service, channel, workBuffer, timeout)
+            workBuffer.clear()
+            return channel
         }
     }
 
@@ -226,7 +253,7 @@ internal class AdbServiceRunner(val session: AdbSession, private val channelProv
         val channel = switchToTransport(device, workBuffer, timeout)
         return channel.use {
             sendAdbServiceRequest(channel, workBuffer, query, timeout)
-            consumeOkayFailResponse(channel, workBuffer, timeout)
+            consumeOkayFailResponse(device, query, channel, workBuffer, timeout)
             readOkayFailString(channel, workBuffer, query, timeout, okayData)
         }
     }
@@ -246,8 +273,8 @@ internal class AdbServiceRunner(val session: AdbSession, private val channelProv
             sendAdbServiceRequest(channel, workBuffer, query, timeout)
             // We receive 2 OKAY answers from the ADB Host: 1st OKAY is connect, 2nd OKAY is status.
             // See https://cs.android.com/android/platform/superproject/+/3a52886262ae22477a7d8ffb12adba64daf6aafa:packages/modules/adb/adb.cpp;l=1058
-            consumeOkayFailResponse(channel, workBuffer, timeout)
-            consumeOkayFailResponse(channel, workBuffer, timeout)
+            consumeOkayFailResponse(device, query, channel, workBuffer, timeout)
+            consumeOkayFailResponse(device, query, channel, workBuffer, timeout)
             readOkayFailString(channel, workBuffer, query, timeout, okayData)
         }
     }
@@ -284,7 +311,7 @@ internal class AdbServiceRunner(val session: AdbSession, private val channelProv
         channel.closeOnException {
             logger.debug { "\"$service\" - sending local service request to ADB daemon, timeout: $timeout" }
             sendAdbServiceRequest(channel, workBuffer, service, timeout)
-            consumeOkayFailResponse(channel, workBuffer, timeout)
+            consumeOkayFailResponse(device, service, channel, workBuffer, timeout)
         }
         return channel
     }
@@ -296,6 +323,8 @@ internal class AdbServiceRunner(val session: AdbSession, private val channelProv
      * * If FAIL, throws an [AdbProtocolErrorException] exception (with the error message)
      */
     suspend fun consumeOkayFailResponse(
+        device: DeviceSelector?,
+        service: String,
         channel: AdbInputChannel,
         workBuffer: ResizableBuffer,
         timeout: TimeoutTracker
@@ -311,7 +340,7 @@ internal class AdbServiceRunner(val session: AdbSession, private val channelProv
                 // Nothing to do
             }
             AdbProtocolUtils.isFail(data) -> {
-                readFailResponseAndThrow(channel, workBuffer, timeout)
+                readFailResponseAndThrow(device, service, channel, workBuffer, timeout)
             }
             else -> {
                 val error = AdbProtocolErrorException(
@@ -331,6 +360,8 @@ internal class AdbServiceRunner(val session: AdbSession, private val channelProv
      *   [AdbProtocolErrorException] exception (with the error message)
      */
     suspend fun consumeSyncOkayFailResponse(
+        device: DeviceSelector,
+        service: String,
         channel: AdbInputChannel,
         workBuffer: ResizableBuffer,
         timeout: TimeoutTracker
@@ -357,7 +388,7 @@ internal class AdbServiceRunner(val session: AdbSession, private val channelProv
             AdbProtocolUtils.isFail(data) -> {
                 data.getInt() // Consume 'FAIL'
                 val length = data.getInt() // Consume length (little endian)
-                readSyncFailMessageAndThrow(channel, workBuffer, length, timeout)
+                readSyncFailMessageAndThrow(device, service, channel, workBuffer, length, timeout)
             }
             else -> {
                 val error = AdbProtocolErrorException(
@@ -370,6 +401,8 @@ internal class AdbServiceRunner(val session: AdbSession, private val channelProv
     }
 
     suspend fun readSyncFailMessageAndThrow(
+        device: DeviceSelector,
+        service: String,
         channel: AdbInputChannel,
         workBuffer: ResizableBuffer,
         length: Int,
@@ -378,16 +411,22 @@ internal class AdbServiceRunner(val session: AdbSession, private val channelProv
         workBuffer.clear()
         channel.readExactly(workBuffer.forChannelRead(length), timeout)
         val messageBuffer = workBuffer.afterChannelRead()
-        throw AdbFailResponseException(messageBuffer)
+        throw AdbDeviceFailResponseException(device, service, messageBuffer)
     }
 
     private suspend fun readFailResponseAndThrow(
+        device: DeviceSelector?,
+        service: String,
         channel: AdbInputChannel,
         workBuffer: ResizableBuffer,
         timeout: TimeoutTracker
     ) {
         val data = readLengthPrefixedData(channel, workBuffer, timeout)
-        throw AdbFailResponseException(data)
+        throw if (device == null) {
+            AdbHostFailResponseException(service, data)
+        } else {
+            AdbDeviceFailResponseException(device, service, data)
+        }
     }
 
     /**
@@ -433,7 +472,7 @@ internal class AdbServiceRunner(val session: AdbSession, private val channelProv
         timeout: TimeoutTracker
     ): AdbChannel {
         val transportPrefix = deviceSelector.transportPrefix
-        startHostQuery(workBuffer, transportPrefix, timeout).closeOnException { channel ->
+        startHostQueryImpl(workBuffer, deviceSelector, transportPrefix, timeout).closeOnException { channel ->
             if (deviceSelector.responseContainsTransportId) {
                 deviceSelector.transportId = consumeTransportId(channel, workBuffer, timeout)
             }

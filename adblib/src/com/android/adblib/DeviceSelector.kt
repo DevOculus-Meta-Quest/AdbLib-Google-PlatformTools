@@ -100,7 +100,15 @@ abstract class DeviceSelector {
      */
     internal open val responseContainsTransportId = false
 
+    /**
+     * The device serial number if this [DeviceSelector] contains one, `null` otherwise
+     */
     internal open val serialNumber: String? = null
+
+    /**
+     * A short human-readable description
+     */
+    abstract val shortDescription: String
 
     private class SerialNumber(override val serialNumber: String) : DeviceSelector() {
 
@@ -111,6 +119,9 @@ abstract class DeviceSelector {
 
         override val transportPrefix: String
             get() = "host:transport:$serialNumber"
+
+        override val shortDescription: String
+            get() = serialNumberShortDescription(serialNumber)
     }
 
     private class TransportId(private val value: Long) : DeviceSelector() {
@@ -128,6 +139,10 @@ abstract class DeviceSelector {
 
         override val transportPrefix: String
             get() = "host:transport-id:$value"
+
+        override val shortDescription: String
+            get() = transportIdShortDescription(value)
+
     }
 
     private object Usb : DeviceSelector() {
@@ -139,6 +154,9 @@ abstract class DeviceSelector {
 
         override val transportPrefix: String
             get() = "host:transport-usb"
+
+        override val shortDescription: String
+            get() = USB_SHORT_DESCRIPTION
     }
 
     private object Local : DeviceSelector() {
@@ -150,6 +168,9 @@ abstract class DeviceSelector {
 
         override val transportPrefix: String
             get() = "host:transport-local"
+
+        override val shortDescription: String
+            get() = LOCAL_SHORT_DESCRIPTION
     }
 
     private object Any : DeviceSelector() {
@@ -161,6 +182,9 @@ abstract class DeviceSelector {
 
         override val transportPrefix: String
             get() = "host:transport-any"
+
+        override val shortDescription: String
+            get() = ANY_SHORT_DESCRIPTION
     }
 
     /**
@@ -253,6 +277,9 @@ abstract class DeviceSelector {
 
                 override val responseContainsTransportId: Boolean
                     get() = true
+
+                override val shortDescription: String
+                    get() = serialNumberShortDescription(serialNumber)
             }
 
             private object UsbWithTransportId : DeviceSelector() {
@@ -267,6 +294,9 @@ abstract class DeviceSelector {
 
                 override val responseContainsTransportId: Boolean
                     get() = true
+
+                override val shortDescription: String
+                    get() = USB_SHORT_DESCRIPTION
             }
 
             private object LocalWithTransportId : DeviceSelector() {
@@ -281,6 +311,9 @@ abstract class DeviceSelector {
 
                 override val responseContainsTransportId: Boolean
                     get() = true
+
+                override val shortDescription: String
+                    get() = LOCAL_SHORT_DESCRIPTION
             }
 
             private object AnyWithTransportId : DeviceSelector() {
@@ -295,6 +328,9 @@ abstract class DeviceSelector {
 
                 override val responseContainsTransportId: Boolean
                     get() = true
+
+                override val shortDescription: String
+                    get() = ANY_SHORT_DESCRIPTION
             }
         }
 
@@ -327,7 +363,22 @@ abstract class DeviceSelector {
 
                 override val responseContainsTransportId: Boolean
                     get() = delegate.responseContainsTransportId
+
+                override val shortDescription: String
+                    get() = delegate.shortDescription
             }
+        }
+
+        private const val USB_SHORT_DESCRIPTION = "device 'usb'"
+        private const val LOCAL_SHORT_DESCRIPTION = "device 'local'"
+        private const val ANY_SHORT_DESCRIPTION = "device 'any'"
+        @Suppress("NOTHING_TO_INLINE")
+        private inline fun serialNumberShortDescription(serialNumber: String): String {
+            return "device serial #$serialNumber"
+        }
+        @Suppress("NOTHING_TO_INLINE")
+        private inline fun transportIdShortDescription(transportId: Long): String {
+            return "device transport id $transportId"
         }
     }
 }

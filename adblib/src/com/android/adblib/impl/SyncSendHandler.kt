@@ -36,7 +36,7 @@ import java.nio.file.attribute.FileTime
  */
 internal class SyncSendHandler(
     private val serviceRunner: AdbServiceRunner,
-    device: DeviceSelector,
+    private val device: DeviceSelector,
     private val deviceChannel: AdbChannel
 ) {
 
@@ -114,6 +114,8 @@ internal class SyncSendHandler(
             //       reading should be done before sending the whole file contents to the device,
             //       since that content will essentially be ignored.
             serviceRunner.consumeSyncOkayFailResponse(
+                device,
+                "sync-send('$remoteFilePath')",
                 deviceChannel,
                 workBuffer,
                 TimeoutTracker.INFINITE

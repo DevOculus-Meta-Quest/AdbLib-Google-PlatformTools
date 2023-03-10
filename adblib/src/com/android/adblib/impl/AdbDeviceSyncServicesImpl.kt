@@ -106,7 +106,7 @@ internal class AdbDeviceSyncServicesImpl private constructor(
                     val localService = "sync:"
                     host.logger.debug { "$localService - sending local service request to ADB daemon, timeout: $tracker" }
                     serviceRunner.sendAdbServiceRequest(channel, workBuffer, localService, tracker)
-                    serviceRunner.consumeOkayFailResponse(channel, workBuffer, tracker)
+                    serviceRunner.consumeOkayFailResponse(device, localService, channel, workBuffer, tracker)
 
                     // Now that everything is setup, returns the instance
                     AdbDeviceSyncServicesImpl(serviceRunner, device, channel)

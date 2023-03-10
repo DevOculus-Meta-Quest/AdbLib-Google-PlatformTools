@@ -24,7 +24,6 @@ import com.android.adblib.testingutils.TestingAdbSessionHost
 import com.android.fakeadbserver.DeviceState
 import com.android.fakeadbserver.MdnsService
 import com.android.fakeadbserver.hostcommandhandlers.FaultyVersionCommandHandler
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert

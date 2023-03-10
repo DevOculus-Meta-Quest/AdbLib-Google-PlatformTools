@@ -59,6 +59,41 @@ class DeviceSelectorTest {
     }
 
     @Test
+    fun shortDescriptionWorks() {
+        // Prepare
+        val device1 = DeviceSelector.fromSerialNumber("12345")
+        val device2 = DeviceSelector.fromTransportId(2)
+        val device3 = DeviceSelector.local()
+        val device4 = DeviceSelector.usb()
+        val device5 = DeviceSelector.any()
+        val device6 = DeviceSelector.factoryWithTransportId.fromSerialNumber("12345")
+        val device7 = DeviceSelector.factoryWithTransportId.local()
+        val device8 = DeviceSelector.factoryWithTransportId.usb()
+        val device9 = DeviceSelector.factoryWithTransportId.any()
+        val device10 = DeviceSelector.factoryWithTransportIdTracking.fromSerialNumber("12345")
+        val device11 = DeviceSelector.factoryWithTransportIdTracking.local()
+        val device12 = DeviceSelector.factoryWithTransportIdTracking.usb()
+        val device13 = DeviceSelector.factoryWithTransportIdTracking.any()
+
+        // Act
+
+        // Assert
+        Assert.assertEquals("device serial #12345", device1.shortDescription)
+        Assert.assertEquals("device transport id 2", device2.shortDescription)
+        Assert.assertEquals("device 'local'", device3.shortDescription)
+        Assert.assertEquals("device 'usb'", device4.shortDescription)
+        Assert.assertEquals("device 'any'", device5.shortDescription)
+        Assert.assertEquals("device serial #12345", device6.shortDescription)
+        Assert.assertEquals("device 'local'", device7.shortDescription)
+        Assert.assertEquals("device 'usb'", device8.shortDescription)
+        Assert.assertEquals("device 'any'", device9.shortDescription)
+        Assert.assertEquals("device serial #12345", device10.shortDescription)
+        Assert.assertEquals("device 'local'", device11.shortDescription)
+        Assert.assertEquals("device 'usb'", device12.shortDescription)
+        Assert.assertEquals("device 'any'", device13.shortDescription)
+    }
+
+    @Test
     fun transportPrefixWithTransportIdWorks() {
         // Prepare
         val device1 = DeviceSelector.factoryWithTransportId.fromSerialNumber("12345")
