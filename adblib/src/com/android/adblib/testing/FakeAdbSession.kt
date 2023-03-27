@@ -24,6 +24,7 @@ import com.android.adblib.impl.channels.AdbChannelFactoryImpl
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 
 /**
  * A fake implementation of [FakeAdbSession] for tests.
@@ -48,5 +49,6 @@ class FakeAdbSession : AdbSession {
 
     override fun close() {
         (cache as CoroutineScopeCacheImpl).close()
+        scope.cancel("adblib session has been cancelled")
     }
 }
