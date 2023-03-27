@@ -18,10 +18,10 @@ package com.android.adblib
 import com.android.adblib.impl.channels.AdbInputChannelReader
 import com.android.adblib.impl.channels.AdbInputStreamChannel
 import com.android.adblib.impl.channels.AdbOutputStreamChannel
-import com.android.adblib.testingutils.CloseablesRule
 import com.android.adblib.testingutils.CoroutineTestUtils.runBlockingWithTimeout
 import com.android.adblib.testingutils.CoroutineTestUtils.yieldUntil
 import com.android.adblib.testingutils.FakeAdbServerProvider
+import com.android.adblib.testingutils.FakeAdbServerProviderRule
 import com.android.adblib.testingutils.TestingAdbSessionHost
 import com.android.adblib.testingutils.TimeWaitSocketsThrottler
 import com.android.adblib.testingutils.asAdbInputChannel
@@ -72,22 +72,22 @@ class AdbDeviceServicesTest {
 
     @JvmField
     @Rule
-    val closeables = CloseablesRule()
+    var exceptionRule: ExpectedException = ExpectedException.none()
 
     @JvmField
     @Rule
-    var exceptionRule: ExpectedException = ExpectedException.none()
-
-    private fun <T : AutoCloseable> registerCloseable(item: T): T {
-        return closeables.register(item)
+    val fakeAdbRule = FakeAdbServerProviderRule {
+        installDefaultCommandHandlers()
+        installDeviceHandler(SyncCommandHandler())
     }
+
+    private val fakeAdb get() = fakeAdbRule.fakeAdb
+    private val deviceServices get() = fakeAdbRule.adbSession.deviceServices
 
     @Test
     fun testShell(): Unit = runBlockingWithTimeout {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
         val device = addFakeDevice(fakeAdb)
-        val deviceServices = createDeviceServices(fakeAdb)
         val deviceSelector = DeviceSelector.fromSerialNumber(device.deviceId)
         val collector = ByteBufferShellCollector()
 
@@ -114,9 +114,7 @@ class AdbDeviceServicesTest {
     @Test
     fun testShellAllowsNonAscii(): Unit = runBlockingWithTimeout {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
         val device = addFakeDevice(fakeAdb)
-        val deviceServices = createDeviceServices(fakeAdb)
         val deviceSelector = DeviceSelector.fromSerialNumber(device.deviceId)
         val collector = TextShellCollector()
 
@@ -131,9 +129,7 @@ class AdbDeviceServicesTest {
     @Test
     fun testShellCanStripCrLf(): Unit = runBlockingWithTimeout {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
         val device = addFakeDevice(fakeAdb, 23) // older device to force \r\n newlines
-        val deviceServices = createDeviceServices(fakeAdb)
         val deviceSelector = DeviceSelector.fromSerialNumber(device.deviceId)
         val collector = ByteBufferShellCollector()
 
@@ -160,9 +156,7 @@ class AdbDeviceServicesTest {
     @Test
     fun testShellCanKeepCrLf(): Unit = runBlockingWithTimeout {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
         val device = addFakeDevice(fakeAdb, 23) // older device to force \r\n newlines
-        val deviceServices = createDeviceServices(fakeAdb)
         val deviceSelector = DeviceSelector.fromSerialNumber(device.deviceId)
         val collector = ByteBufferShellCollector()
 
@@ -189,9 +183,7 @@ class AdbDeviceServicesTest {
     @Test
     fun testShellToText(): Unit = runBlockingWithTimeout {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
         val device = addFakeDevice(fakeAdb)
-        val deviceServices = createDeviceServices(fakeAdb)
         val deviceSelector = DeviceSelector.fromSerialNumber(device.deviceId)
 
         // Act
@@ -218,9 +210,7 @@ class AdbDeviceServicesTest {
     @Test
     fun testShellToLines(): Unit = runBlockingWithTimeout {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
         val device = addFakeDevice(fakeAdb)
-        val deviceServices = createDeviceServices(fakeAdb)
         val deviceSelector = DeviceSelector.fromSerialNumber(device.deviceId)
 
         // Act
@@ -249,9 +239,7 @@ class AdbDeviceServicesTest {
     @Test
     fun testShellWithArguments(): Unit = runBlockingWithTimeout {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
         val device = addFakeDevice(fakeAdb)
-        val deviceServices = createDeviceServices(fakeAdb)
         val deviceSelector = DeviceSelector.fromSerialNumber(device.deviceId)
 
         // Act
@@ -270,9 +258,7 @@ class AdbDeviceServicesTest {
     @Test
     fun testShellWithTimeout() {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
         val device = addFakeDevice(fakeAdb)
-        val deviceServices = createDeviceServices(fakeAdb)
         val deviceSelector = DeviceSelector.fromSerialNumber(device.deviceId)
         val collector = ByteBufferShellCollector()
 
@@ -295,9 +281,7 @@ class AdbDeviceServicesTest {
     @Test
     fun testShellWithStdin(): Unit = runBlockingWithTimeout {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
         val fakeDevice = addFakeDevice(fakeAdb)
-        val deviceServices = createDeviceServices(fakeAdb)
         val deviceSelector = DeviceSelector.fromSerialNumber(fakeDevice.deviceId)
         val input = """
             This is some text with
@@ -325,9 +309,7 @@ class AdbDeviceServicesTest {
     @Test
     fun testShellWithNoShutdownOutput(): Unit = runBlockingWithTimeout {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
         val fakeDevice = addFakeDevice(fakeAdb)
-        val deviceServices = createDeviceServices(fakeAdb)
         val deviceSelector = DeviceSelector.fromSerialNumber(fakeDevice.deviceId)
         val input = "foo"
 
@@ -354,9 +336,7 @@ class AdbDeviceServicesTest {
     @Test
     fun testShellWithLargeInputAndSmallBufferSize(): Unit = runBlockingWithTimeout {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
         val fakeDevice = addFakeDevice(fakeAdb)
-        val deviceServices = createDeviceServices(fakeAdb)
         // To ensure we don't spam the log during this test
         deviceServices.session.host.setTestLoggerMinLevel(
             deviceServices.session.host.logger.minLevel.coerceAtLeast(AdbLogger.Level.INFO)
@@ -391,9 +371,7 @@ class AdbDeviceServicesTest {
     @Test
     fun testShellWithErroneousStdinMaintainsInitialException(): Unit = runBlockingWithTimeout {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
         val fakeDevice = addFakeDevice(fakeAdb)
-        val deviceServices = createDeviceServices(fakeAdb)
         val deviceSelector = DeviceSelector.fromSerialNumber(fakeDevice.deviceId)
         val errorInputChannel = object : AdbInputChannel {
             private var firstCall = true
@@ -429,9 +407,7 @@ class AdbDeviceServicesTest {
     @Test
     fun testShellWithCancelledStdinMaintainsCancellation() {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
         val fakeDevice = addFakeDevice(fakeAdb)
-        val deviceServices = createDeviceServices(fakeAdb)
         val deviceSelector = DeviceSelector.fromSerialNumber(fakeDevice.deviceId)
         val errorInputChannel = object : AdbInputChannel {
             private var firstCall = true
@@ -481,9 +457,7 @@ class AdbDeviceServicesTest {
     @Test
     fun testShellStdinIsForwardedConcurrentlyWithStdout(): Unit = runBlockingWithTimeout {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
         val fakeDevice = addFakeDevice(fakeAdb)
-        val deviceServices = createDeviceServices(fakeAdb)
         val deviceSelector = DeviceSelector.fromSerialNumber(fakeDevice.deviceId)
 
         // Channel used to coordinate our custom AdbInputChannel and consuming the flow
@@ -554,9 +528,7 @@ class AdbDeviceServicesTest {
     @Test
     fun testShellWithMonitoringCanDetectInactiveCommand(): Unit = runBlockingWithTimeout {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
         val fakeDevice = addFakeDevice(fakeAdb)
-        val deviceServices = createDeviceServices(fakeAdb)
         val deviceSelector = DeviceSelector.fromSerialNumber(fakeDevice.deviceId)
         val slowInputChannel = object : AdbInputChannel {
             var firstCall = true
@@ -595,9 +567,7 @@ class AdbDeviceServicesTest {
     @Test
     fun testShellWithMonitoringWorksAsLongAsTimeoutIsNotExceeded(): Unit = runBlockingWithTimeout {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
         val fakeDevice = addFakeDevice(fakeAdb)
-        val deviceServices = createDeviceServices(fakeAdb)
         val deviceSelector = DeviceSelector.fromSerialNumber(fakeDevice.deviceId)
         val slowInputChannel = object : AdbInputChannel {
             var callCount = 0
@@ -636,9 +606,7 @@ class AdbDeviceServicesTest {
     @Test
     fun testExec(): Unit = runBlockingWithTimeout {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
         val device = addFakeDevice(fakeAdb)
-        val deviceServices = createDeviceServices(fakeAdb)
         val deviceSelector = DeviceSelector.fromSerialNumber(device.deviceId)
         val collector = ByteBufferShellCollector()
 
@@ -665,9 +633,7 @@ class AdbDeviceServicesTest {
     @Test
     fun testShellV2Works(): Unit = runBlockingWithTimeout {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
         val device = addFakeDevice(fakeAdb)
-        val deviceServices = createDeviceServices(fakeAdb)
         val deviceSelector = DeviceSelector.fromSerialNumber(device.deviceId)
         val collector = ShellV2ResultCollector()
 
@@ -699,9 +665,7 @@ class AdbDeviceServicesTest {
     @Test
     fun testShellV2SplitsShellPackets(): Unit = runBlockingWithTimeout {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
         val device = addFakeDevice(fakeAdb)
-        val deviceServices = createDeviceServices(fakeAdb)
         val deviceSelector = DeviceSelector.fromSerialNumber(device.deviceId)
         val collector = ShellV2ResultCollector()
         val input = """
@@ -752,9 +716,7 @@ class AdbDeviceServicesTest {
     @Test
     fun testShellV2WithErroneousStdinMaintainsInitialException(): Unit = runBlockingWithTimeout {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
         val fakeDevice = addFakeDevice(fakeAdb)
-        val deviceServices = createDeviceServices(fakeAdb)
         val deviceSelector = DeviceSelector.fromSerialNumber(fakeDevice.deviceId)
         val errorInputChannel = object : AdbInputChannel {
             private var firstCall = true
@@ -790,9 +752,7 @@ class AdbDeviceServicesTest {
     @Test
     fun testShellV2WithCancelledStdinMaintainsCancellation(): Unit = runBlockingWithTimeout {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
         val fakeDevice = addFakeDevice(fakeAdb)
-        val deviceServices = createDeviceServices(fakeAdb)
         val deviceSelector = DeviceSelector.fromSerialNumber(fakeDevice.deviceId)
         val errorInputChannel = object : AdbInputChannel {
             private var firstCall = true
@@ -829,9 +789,7 @@ class AdbDeviceServicesTest {
     @Test
     fun testShellAsTextWorks(): Unit = runBlockingWithTimeout {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
         val fakeDevice = addFakeDevice(fakeAdb)
-        val deviceServices = createDeviceServices(fakeAdb)
         val deviceSelector = DeviceSelector.fromSerialNumber(fakeDevice.deviceId)
         val input = """
             stdout: This is some text with
@@ -873,9 +831,7 @@ class AdbDeviceServicesTest {
     @Test
     fun testShellV2AsLineWorks(): Unit = runBlockingWithTimeout {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
         val fakeDevice = addFakeDevice(fakeAdb)
-        val deviceServices = createDeviceServices(fakeAdb)
         val deviceSelector = DeviceSelector.fromSerialNumber(fakeDevice.deviceId)
         val input = """
             stdout: This is some text with
@@ -926,9 +882,7 @@ class AdbDeviceServicesTest {
     @Test
     fun testShellInputChannelCollectorWorks(): Unit = runBlockingWithTimeout {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
         val fakeDevice = addFakeDevice(fakeAdb)
-        val deviceServices = createDeviceServices(fakeAdb)
         val deviceSelector = DeviceSelector.fromSerialNumber(fakeDevice.deviceId)
         val input = """
             stdout: This is some text with
@@ -994,9 +948,7 @@ class AdbDeviceServicesTest {
     @Test
     fun testShellInputChannelCollectorUseWorks(): Unit = runBlockingWithTimeout {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
         val fakeDevice = addFakeDevice(fakeAdb)
-        val deviceServices = createDeviceServices(fakeAdb)
         val deviceSelector = DeviceSelector.fromSerialNumber(fakeDevice.deviceId)
         val input = """
             stdout: This is some text with
@@ -1065,9 +1017,7 @@ class AdbDeviceServicesTest {
     @Test
     fun testShellCommandExecuteSingleOutputIsTransparentToExceptions(): Unit = runBlockingWithTimeout {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
         val fakeDevice = addFakeDevice(fakeAdb)
-        val deviceServices = createDeviceServices(fakeAdb)
         val deviceSelector = DeviceSelector.fromSerialNumber(fakeDevice.deviceId)
         val input = """
             stdout: This is some text with
@@ -1118,9 +1068,7 @@ class AdbDeviceServicesTest {
     @Test
     fun testShellCommandExecuteSingleOutputIsTransparentToExceptionsInStdoutReader(): Unit = runBlockingWithTimeout {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
         val fakeDevice = addFakeDevice(fakeAdb)
-        val deviceServices = createDeviceServices(fakeAdb)
         val deviceSelector = DeviceSelector.fromSerialNumber(fakeDevice.deviceId)
         val input = """
             stdout: This is some text with
@@ -1155,9 +1103,7 @@ class AdbDeviceServicesTest {
     @Test
     fun testShellCommandExecuteSingleOutputIsTransparentToExceptionsInStderrReader(): Unit = runBlockingWithTimeout {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
         val fakeDevice = addFakeDevice(fakeAdb)
-        val deviceServices = createDeviceServices(fakeAdb)
         val deviceSelector = DeviceSelector.fromSerialNumber(fakeDevice.deviceId)
         val input = """
             stdout: This is some text with
@@ -1192,9 +1138,7 @@ class AdbDeviceServicesTest {
     @Test
     fun testShellCommandExecuteSingleOutputAllowsCancellation(): Unit = runBlockingWithTimeout {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
         val fakeDevice = addFakeDevice(fakeAdb)
-        val deviceServices = createDeviceServices(fakeAdb)
         val deviceSelector = DeviceSelector.fromSerialNumber(fakeDevice.deviceId)
         val input = """
             stdout: This is some text with
@@ -1247,9 +1191,7 @@ class AdbDeviceServicesTest {
     @Test
     fun testShellCommandExecuteSingleOutputAllowsCancellationInStdoutReader(): Unit = runBlockingWithTimeout {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
         val fakeDevice = addFakeDevice(fakeAdb)
-        val deviceServices = createDeviceServices(fakeAdb)
         val deviceSelector = DeviceSelector.fromSerialNumber(fakeDevice.deviceId)
         val input = """
             stdout: This is some text with
@@ -1287,9 +1229,7 @@ class AdbDeviceServicesTest {
     @Test
     fun testShellCommandExecuteSingleOutputAllowsCancellationInStderrReader(): Unit = runBlockingWithTimeout {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
         val fakeDevice = addFakeDevice(fakeAdb)
-        val deviceServices = createDeviceServices(fakeAdb)
         val deviceSelector = DeviceSelector.fromSerialNumber(fakeDevice.deviceId)
         val input = """
             stdout: This is some text with
@@ -1325,10 +1265,8 @@ class AdbDeviceServicesTest {
     @Test
     fun testShellCommandUsesLegacyExecIfSupported(): Unit = runBlockingWithTimeout {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
         // "exec" is supported starting API 21
         val fakeDevice = addFakeDevice(fakeAdb, 21)
-        val deviceServices = createDeviceServices(fakeAdb)
         val deviceSelector = DeviceSelector.fromSerialNumber(fakeDevice.deviceId)
 
         // Act
@@ -1347,10 +1285,8 @@ class AdbDeviceServicesTest {
     @Test
     fun testShellCommandUsesLegacyShellIfSupported(): Unit = runBlockingWithTimeout {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
         // Below API 21, only "shell" is supported
         val fakeDevice = addFakeDevice(fakeAdb, 19)
-        val deviceServices = createDeviceServices(fakeAdb)
         val deviceSelector = DeviceSelector.fromSerialNumber(fakeDevice.deviceId)
 
         // Act
@@ -1370,10 +1306,8 @@ class AdbDeviceServicesTest {
     @Test
     fun testShellCommandWithCommandOutputTimeoutUsesLegacyExecIfSupported(): Unit = runBlockingWithTimeout {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
         // "exec" is supported starting API 21
         val fakeDevice = addFakeDevice(fakeAdb, 21)
-        val deviceServices = createDeviceServices(fakeAdb)
         val deviceSelector = DeviceSelector.fromSerialNumber(fakeDevice.deviceId)
 
         // Act
@@ -1393,10 +1327,8 @@ class AdbDeviceServicesTest {
     @Test
     fun testShellCommandWithCommandOutputTimeoutUsesLegacyShellIfSupported(): Unit = runBlockingWithTimeout {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
         // Below API 21, only "shell" is supported
         val fakeDevice = addFakeDevice(fakeAdb, 19)
-        val deviceServices = createDeviceServices(fakeAdb)
         val deviceSelector = DeviceSelector.fromSerialNumber(fakeDevice.deviceId)
 
         // Act
@@ -1417,10 +1349,8 @@ class AdbDeviceServicesTest {
     @Test
     fun testShellCommandThrowsIfNoCollectorSet(): Unit = runBlockingWithTimeout {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
         // Below API 21, only "shell" is supported
         val fakeDevice = addFakeDevice(fakeAdb, 19)
-        val deviceServices = createDeviceServices(fakeAdb)
         val deviceSelector = DeviceSelector.fromSerialNumber(fakeDevice.deviceId)
 
         // Act
@@ -1436,10 +1366,8 @@ class AdbDeviceServicesTest {
     @Test
     fun testShellCommandThrowsIfLegacyShellProtocolNotAllowedOnOldDevice(): Unit = runBlockingWithTimeout {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
         // Below API 21, only "shell" is supported
         val fakeDevice = addFakeDevice(fakeAdb, 19)
-        val deviceServices = createDeviceServices(fakeAdb)
         val deviceSelector = DeviceSelector.fromSerialNumber(fakeDevice.deviceId)
 
         // Act
@@ -1456,10 +1384,8 @@ class AdbDeviceServicesTest {
     @Test
     fun testShellCommandStripsCrLfOnOldDevices(): Unit = runBlockingWithTimeout {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
         // Below API 21, only "shell" is supported
         val fakeDevice = addFakeDevice(fakeAdb, 19)
-        val deviceServices = createDeviceServices(fakeAdb)
         val deviceSelector = DeviceSelector.fromSerialNumber(fakeDevice.deviceId)
 
         // Act
@@ -1488,10 +1414,8 @@ class AdbDeviceServicesTest {
     @Test
     fun testShellCommandAllowsCrLfOnOldDevices(): Unit = runBlockingWithTimeout {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
         // Below API 21, only "shell" is supported
         val fakeDevice = addFakeDevice(fakeAdb, 19)
-        val deviceServices = createDeviceServices(fakeAdb)
         val deviceSelector = DeviceSelector.fromSerialNumber(fakeDevice.deviceId)
 
         // Act
@@ -1538,9 +1462,7 @@ class AdbDeviceServicesTest {
     @Test
     fun testDevicePropertiesAllWorks(): Unit = runBlockingWithTimeout {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
         val device = addFakeDevice(fakeAdb)
-        val deviceServices = createDeviceServices(fakeAdb)
         val deviceSelector = DeviceSelector.fromSerialNumber(device.deviceId)
 
         // Act
@@ -1555,9 +1477,7 @@ class AdbDeviceServicesTest {
     @Test
     fun testDevicePropertiesAllWorksOnApi16(): Unit = runBlockingWithTimeout {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
         val device = addFakeDevice(fakeAdb, sdk = 16)
-        val deviceServices = createDeviceServices(fakeAdb)
         val deviceSelector = DeviceSelector.fromSerialNumber(device.deviceId)
 
         // Act
@@ -1572,9 +1492,7 @@ class AdbDeviceServicesTest {
     @Test
     fun testDevicePropertiesAllReadonlyWorks() = runBlockingWithTimeout {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
         val device = addFakeDevice(fakeAdb)
-        val deviceServices = createDeviceServices(fakeAdb)
         val deviceSelector = DeviceSelector.fromSerialNumber(device.deviceId)
         // Wait until device shows up as a connected device
         yieldUntil {
@@ -1604,9 +1522,7 @@ class AdbDeviceServicesTest {
     @Test
     fun testDevicePropertiesApiWorks(): Unit = runBlockingWithTimeout {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
         val device = addFakeDevice(fakeAdb)
-        val deviceServices = createDeviceServices(fakeAdb)
         val deviceSelector = DeviceSelector.fromSerialNumber(device.deviceId)
 
         // Act
@@ -1619,12 +1535,7 @@ class AdbDeviceServicesTest {
     @Test
     fun testSyncSendFileWorks(): Unit = runBlockingWithTimeout {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider())
-            .installDeviceHandler(SyncCommandHandler())
-            .build()
-            .start()
         val fakeDevice = addFakeDevice(fakeAdb)
-        val deviceServices = createDeviceServices(fakeAdb)
         val deviceSelector = DeviceSelector.fromSerialNumber(fakeDevice.deviceId)
 
         val filePath = "/sdcard/foo/bar.bin"
@@ -1661,12 +1572,7 @@ class AdbDeviceServicesTest {
     @Test
     fun testSyncSendEmptyFileWorks(): Unit = runBlockingWithTimeout {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider())
-            .installDeviceHandler(SyncCommandHandler())
-            .build()
-            .start()
         val fakeDevice = addFakeDevice(fakeAdb)
-        val deviceServices = createDeviceServices(fakeAdb)
         val deviceSelector = DeviceSelector.fromSerialNumber(fakeDevice.deviceId)
 
         val filePath = "/sdcard/foo/bar.bin"
@@ -1703,12 +1609,7 @@ class AdbDeviceServicesTest {
     @Test
     fun testSyncSendWithTimeoutWorks(): Unit = runBlockingWithTimeout {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider())
-            .installDeviceHandler(SyncCommandHandler())
-            .build()
-            .start()
         val fakeDevice = addFakeDevice(fakeAdb)
-        val deviceServices = createDeviceServices(fakeAdb)
         val deviceSelector = DeviceSelector.fromSerialNumber(fakeDevice.deviceId)
 
         val filePath = "/sdcard/foo/bar.bin"
@@ -1753,12 +1654,7 @@ class AdbDeviceServicesTest {
     @Test
     fun testSyncSendRethrowsProgressException(): Unit = runBlockingWithTimeout {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider())
-            .installDeviceHandler(SyncCommandHandler())
-            .build()
-            .start()
         val fakeDevice = addFakeDevice(fakeAdb)
-        val deviceServices = createDeviceServices(fakeAdb)
         val deviceSelector = DeviceSelector.fromSerialNumber(fakeDevice.deviceId)
 
         val filePath = "/sdcard/foo/bar.bin"
@@ -1790,12 +1686,7 @@ class AdbDeviceServicesTest {
     @Test
     fun testSyncSendTwoFilesInSameSessionWorks(): Unit = runBlockingWithTimeout {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider())
-            .installDeviceHandler(SyncCommandHandler())
-            .build()
-            .start()
         val fakeDevice = addFakeDevice(fakeAdb)
-        val deviceServices = createDeviceServices(fakeAdb)
         val deviceSelector = DeviceSelector.fromSerialNumber(fakeDevice.deviceId)
 
         val filePath = "/sdcard/foo/bar.bin"
@@ -1860,12 +1751,7 @@ class AdbDeviceServicesTest {
     @Test
     fun testSyncSendFileWithNoDateSetsModifiedDateToCurrentTime(): Unit = runBlockingWithTimeout {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider())
-            .installDeviceHandler(SyncCommandHandler())
-            .build()
-            .start()
         val fakeDevice = addFakeDevice(fakeAdb)
-        val deviceServices = createDeviceServices(fakeAdb)
         val deviceSelector = DeviceSelector.fromSerialNumber(fakeDevice.deviceId)
 
         val filePath = "/sdcard/foo/bar.bin"
@@ -1901,12 +1787,7 @@ class AdbDeviceServicesTest {
     @Test
     fun testSyncRecvFileWorks(): Unit = runBlockingWithTimeout {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider())
-            .installDeviceHandler(SyncCommandHandler())
-            .build()
-            .start()
         val fakeDevice = addFakeDevice(fakeAdb)
-        val deviceServices = createDeviceServices(fakeAdb)
         val deviceSelector = DeviceSelector.fromSerialNumber(fakeDevice.deviceId)
 
         val filePath = "/sdcard/foo/bar.bin"
@@ -1945,12 +1826,7 @@ class AdbDeviceServicesTest {
     @Test
     fun testSyncRecvTwoFileInSameSessionWorks(): Unit = runBlockingWithTimeout {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider())
-            .installDeviceHandler(SyncCommandHandler())
-            .build()
-            .start()
         val fakeDevice = addFakeDevice(fakeAdb)
-        val deviceServices = createDeviceServices(fakeAdb)
         val deviceSelector = DeviceSelector.fromSerialNumber(fakeDevice.deviceId)
 
         val filePath = "/sdcard/foo/bar.bin"
@@ -2019,12 +1895,7 @@ class AdbDeviceServicesTest {
     @Test
     fun testSyncSendThenRecvFileInSameSessionWorks(): Unit = runBlockingWithTimeout {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider())
-            .installDeviceHandler(SyncCommandHandler())
-            .build()
-            .start()
         val fakeDevice = addFakeDevice(fakeAdb)
-        val deviceServices = createDeviceServices(fakeAdb)
         val deviceSelector = DeviceSelector.fromSerialNumber(fakeDevice.deviceId)
 
         val filePath = "/sdcard/foo/bar.bin"
@@ -2081,12 +1952,7 @@ class AdbDeviceServicesTest {
     @Test
     fun testSyncRecvFileThrowsExceptionIfFileDoesNotExist(): Unit = runBlockingWithTimeout {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider())
-            .installDeviceHandler(SyncCommandHandler())
-            .build()
-            .start()
         val fakeDevice = addFakeDevice(fakeAdb)
-        val deviceServices = createDeviceServices(fakeAdb)
         val deviceSelector = DeviceSelector.fromSerialNumber(fakeDevice.deviceId)
 
         val filePath = "/sdcard/foo/bar.bin"
@@ -2111,12 +1977,7 @@ class AdbDeviceServicesTest {
     @Test
     fun testSyncRecvRethrowsProgressException(): Unit = runBlockingWithTimeout {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider())
-            .installDeviceHandler(SyncCommandHandler())
-            .build()
-            .start()
         val fakeDevice = addFakeDevice(fakeAdb)
-        val deviceServices = createDeviceServices(fakeAdb)
         val deviceSelector = DeviceSelector.fromSerialNumber(fakeDevice.deviceId)
 
         val filePath = "/sdcard/foo/bar.bin"
@@ -2156,12 +2017,7 @@ class AdbDeviceServicesTest {
     @Test
     fun testSyncRecvRethrowsOutputChannelException(): Unit = runBlockingWithTimeout {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider())
-            .installDeviceHandler(SyncCommandHandler())
-            .build()
-            .start()
         val fakeDevice = addFakeDevice(fakeAdb)
-        val deviceServices = createDeviceServices(fakeAdb)
         val deviceSelector = DeviceSelector.fromSerialNumber(fakeDevice.deviceId)
 
         val filePath = "/sdcard/foo/bar.bin"
@@ -2203,9 +2059,7 @@ class AdbDeviceServicesTest {
     @Test
     fun testReverseForward(): Unit = runBlockingWithTimeout {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
         val fakeDevice = addFakeDevice(fakeAdb)
-        val deviceServices = createDeviceServices(fakeAdb)
         val deviceSelector = DeviceSelector.fromSerialNumber(fakeDevice.deviceId)
 
         // Act
@@ -2222,9 +2076,7 @@ class AdbDeviceServicesTest {
     @Test
     fun testReverseForwardNoRebind(): Unit = runBlockingWithTimeout {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
         val fakeDevice = addFakeDevice(fakeAdb)
-        val deviceServices = createDeviceServices(fakeAdb)
         val deviceSelector = DeviceSelector.fromSerialNumber(fakeDevice.deviceId)
 
         val port = deviceServices.reverseForward(
@@ -2252,9 +2104,7 @@ class AdbDeviceServicesTest {
     @Test
     fun testReverseForwardRebind(): Unit = runBlockingWithTimeout {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
         val fakeDevice = addFakeDevice(fakeAdb)
-        val deviceServices = createDeviceServices(fakeAdb)
         val deviceSelector = DeviceSelector.fromSerialNumber(fakeDevice.deviceId)
 
         val port = runBlocking {
@@ -2280,9 +2130,7 @@ class AdbDeviceServicesTest {
     @Test
     fun testReverseKillForward(): Unit = runBlockingWithTimeout {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
         val fakeDevice = addFakeDevice(fakeAdb)
-        val deviceServices = createDeviceServices(fakeAdb)
         val deviceSelector = DeviceSelector.fromSerialNumber(fakeDevice.deviceId)
 
         val port = runBlocking {
@@ -2307,9 +2155,7 @@ class AdbDeviceServicesTest {
     @Test
     fun testReverseKillForwardAll(): Unit = runBlockingWithTimeout {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
         val fakeDevice = addFakeDevice(fakeAdb)
-        val deviceServices = createDeviceServices(fakeAdb)
         val deviceSelector = DeviceSelector.fromSerialNumber(fakeDevice.deviceId)
 
         deviceServices.reverseForward(
@@ -2331,9 +2177,7 @@ class AdbDeviceServicesTest {
     @Test
     fun testReverseListForward(): Unit = runBlockingWithTimeout {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
         val fakeDevice = addFakeDevice(fakeAdb)
-        val deviceServices = createDeviceServices(fakeAdb)
         val deviceSelector = DeviceSelector.fromSerialNumber(fakeDevice.deviceId)
 
         deviceServices.reverseForward(
@@ -2361,9 +2205,7 @@ class AdbDeviceServicesTest {
     @Test
     fun testAbbExec(): Unit = runBlockingWithTimeout {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
         val fakeDevice = addFakeDevice(fakeAdb)
-        val deviceServices = createDeviceServices(fakeAdb)
         val deviceSelector = DeviceSelector.fromSerialNumber(fakeDevice.deviceId)
         val appId = "com.foo.bar.app"
 
@@ -2385,9 +2227,7 @@ class AdbDeviceServicesTest {
     @Test
     fun testAbb(): Unit = runBlockingWithTimeout {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
         val fakeDevice = addFakeDevice(fakeAdb)
-        val deviceServices = createDeviceServices(fakeAdb)
         val deviceSelector = DeviceSelector.fromSerialNumber(fakeDevice.deviceId)
         val appId = "com.foo.bar.app"
 
@@ -2409,9 +2249,7 @@ class AdbDeviceServicesTest {
     @Test
     fun testAbbProvidesStderrAndExitCode(): Unit = runBlockingWithTimeout {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
         val fakeDevice = addFakeDevice(fakeAdb)
-        val deviceServices = createDeviceServices(fakeAdb)
         val deviceSelector = DeviceSelector.fromSerialNumber(fakeDevice.deviceId)
 
         // Act
@@ -2437,9 +2275,7 @@ class AdbDeviceServicesTest {
     @Test
     fun testAbbWithStdin(): Unit = runBlockingWithTimeout {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
         val fakeDevice = addFakeDevice(fakeAdb)
-        val deviceServices = createDeviceServices(fakeAdb)
         val deviceSelector = DeviceSelector.fromSerialNumber(fakeDevice.deviceId)
         val dataToSend = ByteArray(1_000_000)
         val stdin = AdbInputStreamChannel(deviceServices.session.host, dataToSend.inputStream())
@@ -2465,9 +2301,7 @@ class AdbDeviceServicesTest {
     @Test
     fun testTrackJdwp(): Unit = runBlockingWithTimeout {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
         val fakeDevice = addFakeDevice(fakeAdb)
-        val deviceServices = createDeviceServices(fakeAdb)
         val deviceSelector = DeviceSelector.fromSerialNumber(fakeDevice.deviceId)
         addClient(fakeDevice, 50) // Add a single client to start with
 
@@ -2491,9 +2325,7 @@ class AdbDeviceServicesTest {
     @Test
     fun testTrackAppFlowWorks(): Unit = runBlockingWithTimeout {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
         val fakeDevice = addFakeDevice(fakeAdb)
-        val deviceServices = createDeviceServices(fakeAdb)
         val deviceSelector = DeviceSelector.fromSerialNumber(fakeDevice.deviceId)
         addProfileableProcess(fakeDevice, 50) // Add a single client to start with
 
@@ -2517,8 +2349,6 @@ class AdbDeviceServicesTest {
     @Test
     fun testTrackAppFlowThrowsIfInvalidDeviceSelector(): Unit = runBlockingWithTimeout {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
-        val deviceServices = createDeviceServices(fakeAdb)
 
         // Act
         exceptionRule.expect(AdbFailResponseException::class.java)
@@ -2533,9 +2363,7 @@ class AdbDeviceServicesTest {
     @Test
     fun testTrackAppFlowIsTransparentToExceptions(): Unit = runBlockingWithTimeout {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
         val fakeDevice = addFakeDevice(fakeAdb)
-        val deviceServices = createDeviceServices(fakeAdb)
         val deviceSelector = DeviceSelector.fromSerialNumber(fakeDevice.deviceId)
         addProfileableProcess(fakeDevice, 50) // Add a single client to start with
 
@@ -2553,9 +2381,7 @@ class AdbDeviceServicesTest {
     @Test
     fun testTrackAppFlowIsTransparentToCancellation(): Unit = runBlockingWithTimeout {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
         val fakeDevice = addFakeDevice(fakeAdb)
-        val deviceServices = createDeviceServices(fakeAdb)
         val deviceSelector = DeviceSelector.fromSerialNumber(fakeDevice.deviceId)
         addProfileableProcess(fakeDevice, 50) // Add a single client to start with
 
@@ -2573,9 +2399,7 @@ class AdbDeviceServicesTest {
     @Test
     fun testJdwpSessionOpens(): Unit = runBlockingWithTimeout {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
         val fakeDevice = addFakeDevice(fakeAdb)
-        val deviceServices = createDeviceServices(fakeAdb)
         val deviceSelector = DeviceSelector.fromSerialNumber(fakeDevice.deviceId)
         val pid = 10
         addClient(fakeDevice, pid)
@@ -2630,18 +2454,6 @@ class AdbDeviceServicesTest {
             result[i] = (i and 0xff).toByte()
         }
         return result
-    }
-
-    private fun createDeviceServices(fakeAdb: FakeAdbServerProvider): AdbDeviceServices {
-        val host = registerCloseable(TestingAdbSessionHost())
-        val channelProvider = fakeAdb.createChannelProvider(host)
-        val session =
-            AdbSession.create(
-                host,
-                channelProvider,
-                Duration.ofMillis(SOCKET_CONNECT_TIMEOUT_MS)
-            )
-        return session.deviceServices
     }
 
     private fun addFakeDevice(fakeAdb: FakeAdbServerProvider, sdk: Int = 30): DeviceState {

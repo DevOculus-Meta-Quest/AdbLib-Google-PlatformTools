@@ -78,6 +78,11 @@ class FakeAdbServerProvider : AutoCloseable {
         return this
     }
 
+    fun setFeatures(features : Set<String>) : FakeAdbServerProvider {
+        builder.setFeatures(features)
+        return this
+    }
+
     fun buildWithFeatures(features : Set<String>) : FakeAdbServerProvider {
         // Build the server and configure it to use the default ADB command handlers.
         builder.installDefaultCommandHandlers()
