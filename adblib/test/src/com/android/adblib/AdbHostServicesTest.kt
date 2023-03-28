@@ -18,11 +18,10 @@ package com.android.adblib
 import com.android.adblib.AdbHostServices.DeviceInfoFormat.LONG_FORMAT
 import com.android.adblib.AdbHostServices.DeviceInfoFormat.SHORT_FORMAT
 import com.android.adblib.DeviceState.ONLINE
-import com.android.adblib.testingutils.CloseablesRule
-import com.android.adblib.testingutils.FakeAdbServerProvider
-import com.android.adblib.testingutils.TestingAdbSessionHost
+import com.android.adblib.testingutils.FakeAdbServerProviderRule
 import com.android.fakeadbserver.DeviceState
 import com.android.fakeadbserver.MdnsService
+import com.android.fakeadbserver.devicecommandhandlers.SyncCommandHandler
 import com.android.fakeadbserver.hostcommandhandlers.FaultyVersionCommandHandler
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -32,7 +31,6 @@ import org.junit.Test
 import org.junit.rules.ExpectedException
 import java.io.IOException
 import java.net.InetSocketAddress
-import java.time.Duration
 import java.util.concurrent.TimeUnit
 
 /**
@@ -48,21 +46,21 @@ class AdbHostServicesTest {
 
     @JvmField
     @Rule
-    val closeables = CloseablesRule()
+    val fakeAdbRule = FakeAdbServerProviderRule {
+        installDefaultCommandHandlers()
+        installDeviceHandler(SyncCommandHandler())
+    }
+
+    private val fakeAdb get() = fakeAdbRule.fakeAdb
+    private val hostServices get() = fakeAdbRule.adbSession.hostServices
 
     @JvmField
     @Rule
     var exceptionRule: ExpectedException = ExpectedException.none()
 
-    private fun <T : AutoCloseable> registerCloseable(item: T): T {
-        return closeables.register(item)
-    }
-
     @Test
     fun testConnect() {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
-        val hostServices = createHostServices(fakeAdb)
         fakeAdb.registerNetworkDevice("localhost:12345",
                                       "1234",
                                       "test1",
@@ -71,7 +69,7 @@ class AdbHostServicesTest {
                                       "sdk")
 
         // Act
-        val result = runBlocking { hostServices.connect(DeviceAddress("localhost:12345")) }
+        runBlocking { hostServices.connect(DeviceAddress("localhost:12345")) }
 
         // Assert
         runBlocking {
@@ -85,8 +83,6 @@ class AdbHostServicesTest {
     @Test
     fun testDisconnect() {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
-        val hostServices = createHostServices(fakeAdb)
         fakeAdb.registerNetworkDevice("localhost:12345",
                                       "1234",
                                       "test1",
@@ -114,9 +110,6 @@ class AdbHostServicesTest {
     @Test
     fun testVersion() {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
-        val hostServices =
-            createHostServices(fakeAdb)
 
         // Act
         val internalVersion = runBlocking { hostServices.version() }
@@ -128,8 +121,7 @@ class AdbHostServicesTest {
     @Test
     fun testVersionConnectionFailure() {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider())
-        val hostServices = createHostServices(fakeAdb)
+        fakeAdb.stop()
 
         // Act (should throw)
         exceptionRule.expect(IOException::class.java)
@@ -142,10 +134,7 @@ class AdbHostServicesTest {
     @Test
     fun testVersionFaultyProtocol() {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider())
         fakeAdb.installHostHandler(FaultyVersionCommandHandler.COMMAND) { FaultyVersionCommandHandler() }
-        fakeAdb.build().start()
-        val hostServices = createHostServices(fakeAdb)
 
         // Act (should throw)
         exceptionRule.expect(AdbProtocolErrorException::class.java)
@@ -158,8 +147,6 @@ class AdbHostServicesTest {
     @Test
     fun testHostFeaturesWorks() {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
-        val hostServices = createHostServices(fakeAdb)
 
         // Act
         val featureList = runBlocking { hostServices.hostFeatures() }
@@ -174,7 +161,6 @@ class AdbHostServicesTest {
     @Test
     fun testDevicesShortFormatWorks() {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
         val fakeDevice =
             fakeAdb.connectDevice(
                 "1234",
@@ -185,7 +171,6 @@ class AdbHostServicesTest {
                 DeviceState.HostConnectionType.USB
             )
         fakeDevice.deviceStatus = DeviceState.DeviceStatus.ONLINE
-        val hostServices = createHostServices(fakeAdb)
 
         // Act
         val deviceList = runBlocking { hostServices.devices(SHORT_FORMAT) }
@@ -206,7 +191,6 @@ class AdbHostServicesTest {
     @Test
     fun testDevicesLongFormatWorks() {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
         val fakeDevice =
             fakeAdb.connectDevice(
                 "1234",
@@ -217,7 +201,6 @@ class AdbHostServicesTest {
                 DeviceState.HostConnectionType.USB
             )
         fakeDevice.deviceStatus = DeviceState.DeviceStatus.ONLINE
-        val hostServices = createHostServices(fakeAdb)
 
         // Act
         val deviceList = runBlocking { hostServices.devices(LONG_FORMAT) }
@@ -238,7 +221,6 @@ class AdbHostServicesTest {
     @Test
     fun testTrackDevicesWorks() {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
         val fakeDevice =
             fakeAdb.connectDevice(
                 "1234",
@@ -249,7 +231,6 @@ class AdbHostServicesTest {
                 DeviceState.HostConnectionType.USB
             )
         fakeDevice.deviceStatus = DeviceState.DeviceStatus.ONLINE
-        val hostServices = createHostServices(fakeAdb)
 
         // Act
         val deviceList = runBlocking {
@@ -280,7 +261,6 @@ class AdbHostServicesTest {
     @Test
     fun testTrackDevicesPropagatesExceptions() {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
         val fakeDevice =
             fakeAdb.connectDevice(
                 "1234",
@@ -291,7 +271,6 @@ class AdbHostServicesTest {
                 DeviceState.HostConnectionType.USB
             )
         fakeDevice.deviceStatus = DeviceState.DeviceStatus.ONLINE
-        val hostServices = createHostServices(fakeAdb)
 
         // Act
         var exception: Throwable? = null
@@ -319,8 +298,6 @@ class AdbHostServicesTest {
     @Test
     fun testKillServer() {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
-        val hostServices = createHostServices(fakeAdb)
 
         // Act
         runBlocking { hostServices.kill() }
@@ -341,8 +318,6 @@ class AdbHostServicesTest {
     @Test
     fun testMdnsCheck() {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
-        val hostServices = createHostServices(fakeAdb)
 
         // Act
         val result = runBlocking { hostServices.mdnsCheck() }
@@ -355,8 +330,6 @@ class AdbHostServicesTest {
     @Test
     fun testMdnsServices() {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
-        val hostServices = createHostServices(fakeAdb)
 
         // Act
         fakeAdb.addMdnsService(
@@ -395,7 +368,6 @@ class AdbHostServicesTest {
     @Test
     fun testPair() {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
         fakeAdb.addMdnsService(
             MdnsService(
                 "foo-bar2",
@@ -403,7 +375,6 @@ class AdbHostServicesTest {
                 InetSocketAddress.createUnresolved("foo", 11)
             )
         )
-        val hostServices = createHostServices(fakeAdb)
 
         // Act
         val result = runBlocking {
@@ -417,8 +388,6 @@ class AdbHostServicesTest {
     @Test
     fun testPairFailsIfDeviceNotPresent() {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
-        val hostServices = createHostServices(fakeAdb)
 
         // Act
         val result = runBlocking {
@@ -432,7 +401,6 @@ class AdbHostServicesTest {
     @Test
     fun testGetState() {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
         val fakeDevice =
             fakeAdb.connectDevice(
                 "1234",
@@ -443,7 +411,6 @@ class AdbHostServicesTest {
                 DeviceState.HostConnectionType.USB
             )
         fakeDevice.deviceStatus = DeviceState.DeviceStatus.ONLINE
-        val hostServices = createHostServices(fakeAdb)
 
         // Act
         val state = runBlocking {
@@ -457,7 +424,6 @@ class AdbHostServicesTest {
     @Test
     fun testGetSerialNo() {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
         val fakeDevice =
             fakeAdb.connectDevice(
                 "1234",
@@ -468,7 +434,6 @@ class AdbHostServicesTest {
                 DeviceState.HostConnectionType.USB
             )
         fakeDevice.deviceStatus = DeviceState.DeviceStatus.ONLINE
-        val hostServices = createHostServices(fakeAdb)
 
         // Act
         val serialNumber = runBlocking {
@@ -482,7 +447,6 @@ class AdbHostServicesTest {
     @Test
     fun testGetSerialNoUsesKnownSerialNumber() {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
         val fakeDevice =
             fakeAdb.connectDevice(
                 "1234",
@@ -493,7 +457,6 @@ class AdbHostServicesTest {
                 DeviceState.HostConnectionType.USB
             )
         fakeDevice.deviceStatus = DeviceState.DeviceStatus.ONLINE
-        val hostServices = createHostServices(fakeAdb)
 
         // Act
         val serialNumber = runBlocking {
@@ -508,7 +471,6 @@ class AdbHostServicesTest {
     @Test
     fun testGetSerialNoConnectsWhenForceRoundTripIsTrue() {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
         val fakeDevice =
             fakeAdb.connectDevice(
                 "1234",
@@ -519,7 +481,6 @@ class AdbHostServicesTest {
                 DeviceState.HostConnectionType.USB
             )
         fakeDevice.deviceStatus = DeviceState.DeviceStatus.ONLINE
-        val hostServices = createHostServices(fakeAdb)
 
         // Act
         val serialNumber = runBlocking {
@@ -534,7 +495,6 @@ class AdbHostServicesTest {
     @Test
     fun testGetSerialConnectsWhenNoSerialNumber() {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
         val fakeDevice =
             fakeAdb.connectDevice(
                 "1234",
@@ -545,7 +505,6 @@ class AdbHostServicesTest {
                 DeviceState.HostConnectionType.USB
             )
         fakeDevice.deviceStatus = DeviceState.DeviceStatus.ONLINE
-        val hostServices = createHostServices(fakeAdb)
 
         // Act
         val serialNumber = runBlocking {
@@ -560,7 +519,6 @@ class AdbHostServicesTest {
     @Test
     fun testGetDevPath() {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
         val fakeDevice =
             fakeAdb.connectDevice(
                 "1234",
@@ -571,7 +529,6 @@ class AdbHostServicesTest {
                 DeviceState.HostConnectionType.USB
             )
         fakeDevice.deviceStatus = DeviceState.DeviceStatus.ONLINE
-        val hostServices = createHostServices(fakeAdb)
 
         // Act
         val devPath = runBlocking {
@@ -585,7 +542,6 @@ class AdbHostServicesTest {
     @Test
     fun testFeatures() {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
         val fakeDevice =
             fakeAdb.connectDevice(
                 "1234",
@@ -596,7 +552,6 @@ class AdbHostServicesTest {
                 DeviceState.HostConnectionType.USB
             )
         fakeDevice.deviceStatus = DeviceState.DeviceStatus.ONLINE
-        val hostServices = createHostServices(fakeAdb)
 
         // Act
         val featureList = runBlocking {
@@ -613,7 +568,6 @@ class AdbHostServicesTest {
     @Test
     fun testForward() {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
         val fakeDevice =
             fakeAdb.connectDevice(
                 "1234",
@@ -624,7 +578,6 @@ class AdbHostServicesTest {
                 DeviceState.HostConnectionType.USB
             )
         fakeDevice.deviceStatus = DeviceState.DeviceStatus.ONLINE
-        val hostServices = createHostServices(fakeAdb)
 
         // Act
         val port = runBlocking {
@@ -642,7 +595,6 @@ class AdbHostServicesTest {
     @Test
     fun testForwardNoRebind() {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
         val fakeDevice =
             fakeAdb.connectDevice(
                 "1234",
@@ -653,7 +605,6 @@ class AdbHostServicesTest {
                 DeviceState.HostConnectionType.USB
             )
         fakeDevice.deviceStatus = DeviceState.DeviceStatus.ONLINE
-        val hostServices = createHostServices(fakeAdb)
         val port = runBlocking {
             hostServices.forward(
                 DeviceSelector.any(),
@@ -680,7 +631,6 @@ class AdbHostServicesTest {
     @Test
     fun testForwardRebind() {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
         val fakeDevice =
             fakeAdb.connectDevice(
                 "1234",
@@ -691,7 +641,6 @@ class AdbHostServicesTest {
                 DeviceState.HostConnectionType.USB
             )
         fakeDevice.deviceStatus = DeviceState.DeviceStatus.ONLINE
-        val hostServices = createHostServices(fakeAdb)
         val port = runBlocking {
             hostServices.forward(
                 DeviceSelector.any(),
@@ -717,7 +666,6 @@ class AdbHostServicesTest {
     @Test
     fun testKillForward() {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
         val fakeDevice =
             fakeAdb.connectDevice(
                 "1234",
@@ -728,7 +676,6 @@ class AdbHostServicesTest {
                 DeviceState.HostConnectionType.USB
             )
         fakeDevice.deviceStatus = DeviceState.DeviceStatus.ONLINE
-        val hostServices = createHostServices(fakeAdb)
         val port = runBlocking {
             hostServices.forward(
                 DeviceSelector.any(),
@@ -753,7 +700,6 @@ class AdbHostServicesTest {
     @Test
     fun testKillForwardAll() {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
         val fakeDevice =
             fakeAdb.connectDevice(
                 "1234",
@@ -764,7 +710,6 @@ class AdbHostServicesTest {
                 DeviceState.HostConnectionType.USB
             )
         fakeDevice.deviceStatus = DeviceState.DeviceStatus.ONLINE
-        val hostServices = createHostServices(fakeAdb)
         runBlocking {
             hostServices.forward(
                 DeviceSelector.any(),
@@ -786,7 +731,6 @@ class AdbHostServicesTest {
     @Test
     fun testListForward() {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
         val fakeDevice =
             fakeAdb.connectDevice(
                 "1234",
@@ -797,7 +741,6 @@ class AdbHostServicesTest {
                 DeviceState.HostConnectionType.USB
             )
         fakeDevice.deviceStatus = DeviceState.DeviceStatus.ONLINE
-        val hostServices = createHostServices(fakeAdb)
         runBlocking {
             hostServices.forward(
                 DeviceSelector.any(),
@@ -820,23 +763,5 @@ class AdbHostServicesTest {
             Assert.assertEquals("tcp:1000", forwardEntry.local.toQueryString())
             Assert.assertEquals("tcp:4000", forwardEntry.remote.toQueryString())
         }
-    }
-
-    private fun createHostServices(fakeAdb: FakeAdbServerProvider): AdbHostServices {
-        val host = registerCloseable(TestingAdbSessionHost())
-        val channelProvider = fakeAdb.createChannelProvider(host)
-        val session = registerCloseable(createSession(host, channelProvider))
-        return session.hostServices
-    }
-
-    private fun createSession(
-      host: AdbSessionHost,
-      channelProvider: AdbChannelProvider
-    ): AdbSession {
-        return AdbSession.create(
-            host,
-            channelProvider,
-            Duration.ofMillis(SOCKET_CONNECT_TIMEOUT_MS)
-        )
     }
 }

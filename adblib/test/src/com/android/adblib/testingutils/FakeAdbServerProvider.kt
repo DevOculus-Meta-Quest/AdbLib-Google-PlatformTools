@@ -39,7 +39,7 @@ import java.util.function.Supplier
  */
 val FAKE_ADB_SERVER_EXECUTOR_TIMEOUT_MS = TimeUnit.MINUTES.toMillis(2)
 
-class FakeAdbServerProvider : AutoCloseable {
+class FakeAdbServerProvider internal constructor(): AutoCloseable {
 
     val inetAddress: InetAddress
         get() = server?.inetAddress ?: throw IllegalStateException("Server not started")
@@ -78,8 +78,8 @@ class FakeAdbServerProvider : AutoCloseable {
         return this
     }
 
-    fun setFeatures(features : Set<String>) : FakeAdbServerProvider {
-        builder.setFeatures(features)
+    fun setFeatures(vararg features : String) : FakeAdbServerProvider {
+        builder.setFeatures(features.toSet())
         return this
     }
 
@@ -157,6 +157,11 @@ class FakeAdbServerProvider : AutoCloseable {
 
     fun start(): FakeAdbServerProvider {
         server?.start()
+        return this
+    }
+
+    fun stop(): FakeAdbServerProvider {
+        server?.close()
         return this
     }
 

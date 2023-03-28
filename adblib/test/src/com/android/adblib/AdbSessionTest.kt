@@ -15,11 +15,10 @@
  */
 package com.android.adblib
 
-import com.android.adblib.testingutils.CloseablesRule
 import com.android.adblib.testingutils.CoroutineTestUtils.runBlockingWithTimeout
-import com.android.adblib.testingutils.FakeAdbServerProvider
-import com.android.adblib.testingutils.TestingAdbSessionHost
+import com.android.adblib.testingutils.FakeAdbServerProviderRule
 import com.android.fakeadbserver.DeviceState
+import com.android.fakeadbserver.devicecommandhandlers.SyncCommandHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.TimeoutCancellationException
@@ -29,12 +28,10 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.yield
 import org.junit.Assert
@@ -50,23 +47,23 @@ class AdbSessionTest {
 
     @JvmField
     @Rule
-    val closeables = CloseablesRule()
+    val fakeAdbRule = FakeAdbServerProviderRule {
+        installDefaultCommandHandlers()
+        installDeviceHandler(SyncCommandHandler())
+    }
+
+    private val fakeAdb get() = fakeAdbRule.fakeAdb
+    private val session get() = fakeAdbRule.adbSession
+    private val hostServices get() = session.hostServices
+    private val host get() = fakeAdbRule.host
 
     @JvmField
     @Rule
     var exceptionRule: ExpectedException = ExpectedException.none()
 
-    private fun <T : AutoCloseable> registerCloseable(item: T): T {
-        return closeables.register(item)
-    }
-
     @Test
     fun testSessionScopeUsesSupervisorJob(): Unit = runBlockingWithTimeout {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
-        val host = registerCloseable(TestingAdbSessionHost())
-        val channelProvider = fakeAdb.createChannelProvider(host)
-        val session = registerCloseable(AdbSession.create(host, channelProvider))
 
         // Act
         val job1 = session.scope.launch {
@@ -93,10 +90,6 @@ class AdbSessionTest {
     @Test
     fun testSessionScopeUsesHostDispatcher(): Unit = runBlockingWithTimeout {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
-        val host = registerCloseable(TestingAdbSessionHost())
-        val channelProvider = fakeAdb.createChannelProvider(host)
-        val session = registerCloseable(AdbSession.create(host, channelProvider))
 
         // Act
         val sessionDispatcher = session.scope.async {
@@ -110,10 +103,6 @@ class AdbSessionTest {
     @Test
     fun testSessionShouldReturnHostServices(): Unit = runBlockingWithTimeout {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
-        val host = registerCloseable(TestingAdbSessionHost())
-        val channelProvider = fakeAdb.createChannelProvider(host)
-        val session = registerCloseable(AdbSession.create(host, channelProvider))
 
         // Act
         val services = session.hostServices
@@ -126,10 +115,6 @@ class AdbSessionTest {
     @Test
     fun testSessionShouldReturnDeviceServices(): Unit = runBlockingWithTimeout {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
-        val host = registerCloseable(TestingAdbSessionHost())
-        val channelProvider = fakeAdb.createChannelProvider(host)
-        val session = registerCloseable(AdbSession.create(host, channelProvider))
 
         // Act
         /*val services = */ session.deviceServices
@@ -138,10 +123,6 @@ class AdbSessionTest {
     @Test
     fun testSessionShouldThrowIfClosed(): Unit = runBlockingWithTimeout {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
-        val host = registerCloseable(TestingAdbSessionHost())
-        val channelProvider = fakeAdb.createChannelProvider(host)
-        val session = registerCloseable(AdbSession.create(host, channelProvider))
 
         // Act
         session.close()
@@ -155,7 +136,6 @@ class AdbSessionTest {
     @Test
     fun testTrackDevicesIsStartedEagerly(): Unit = runBlockingWithTimeout {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
         val fakeDevice = fakeAdb.connectDevice(
             "1234",
             "test1",
@@ -165,7 +145,6 @@ class AdbSessionTest {
             DeviceState.HostConnectionType.USB
         )
         fakeDevice.deviceStatus = DeviceState.DeviceStatus.ONLINE
-        val session = createHostServices(fakeAdb).session
 
         // Act
         // Ensure the connected device shows in the stateFlow.value property even
@@ -187,7 +166,6 @@ class AdbSessionTest {
     @Test
     fun testTrackDevicesRetriesOnError(): Unit = runBlockingWithTimeout {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
         val fakeDevice =
             fakeAdb.connectDevice(
                 "1234",
@@ -198,7 +176,6 @@ class AdbSessionTest {
                 DeviceState.HostConnectionType.USB
             )
         fakeDevice.deviceStatus = DeviceState.DeviceStatus.ONLINE
-        val hostServices = createHostServices(fakeAdb)
 
         // Act
         val flow = hostServices.session.trackDevices(retryDelay = Duration.ofMillis(100))
@@ -263,7 +240,6 @@ class AdbSessionTest {
     @Test
     fun testTrackDevicesOpensOnlyOneAdbConnection(): Unit = runBlockingWithTimeout {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
         val fakeDevice =
             fakeAdb.connectDevice(
                 "1234",
@@ -274,7 +250,6 @@ class AdbSessionTest {
                 DeviceState.HostConnectionType.USB
             )
         fakeDevice.deviceStatus = DeviceState.DeviceStatus.ONLINE
-        val hostServices = createHostServices(fakeAdb)
 
         // Act
         val flow = hostServices.session.trackDevices(retryDelay = Duration.ofMillis(100))
@@ -321,7 +296,6 @@ class AdbSessionTest {
     @Test
     fun testTrackDevicesKeepsWorkingAfterExceptionsInDownstreamCollector(): Unit = runBlockingWithTimeout {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
         val fakeDevice =
             fakeAdb.connectDevice(
                 "1234",
@@ -332,7 +306,6 @@ class AdbSessionTest {
                 DeviceState.HostConnectionType.USB
             )
         fakeDevice.deviceStatus = DeviceState.DeviceStatus.ONLINE
-        val hostServices = createHostServices(fakeAdb)
 
         // Act
         val exceptions = Collections.synchronizedList(ArrayList<MyTestException>())
@@ -393,7 +366,6 @@ class AdbSessionTest {
     @Test
     fun testTrackDeviceInfoWorks(): Unit = runBlockingWithTimeout {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
         val fakeDevice =
             fakeAdb.connectDevice(
                 "1234",
@@ -403,7 +375,6 @@ class AdbSessionTest {
                 "sdk",
                 DeviceState.HostConnectionType.USB
             )
-        val hostServices = createHostServices(fakeAdb)
         val deviceSelector = DeviceSelector.fromSerialNumber(fakeDevice.deviceId)
 
         // Act
@@ -441,7 +412,6 @@ class AdbSessionTest {
     @Test
     fun testTrackDeviceInfoStopAfterDeviceDisconnects(): Unit = runBlockingWithTimeout {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
         val fakeDevice =
             fakeAdb.connectDevice(
                 "1234",
@@ -451,7 +421,6 @@ class AdbSessionTest {
                 "sdk",
                 DeviceState.HostConnectionType.USB
             )
-        val hostServices = createHostServices(fakeAdb)
         val deviceSelector = DeviceSelector.fromSerialNumber(fakeDevice.deviceId)
 
         // Act
@@ -478,7 +447,6 @@ class AdbSessionTest {
     @Test
     fun testTrackDeviceInfoStopsAfterAdbRestart(): Unit = runBlockingWithTimeout {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
         val fakeDevice =
             fakeAdb.connectDevice(
                 "1234",
@@ -488,7 +456,6 @@ class AdbSessionTest {
                 "sdk",
                 DeviceState.HostConnectionType.USB
             )
-        val hostServices = createHostServices(fakeAdb)
         val deviceSelector = DeviceSelector.fromSerialNumber(fakeDevice.deviceId)
 
         // Act
@@ -524,8 +491,6 @@ class AdbSessionTest {
     @Test
     fun testTrackDeviceInfoEndsIfDeviceNotFound(): Unit = runBlockingWithTimeout {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
-        val hostServices = createHostServices(fakeAdb)
         fakeAdb.connectDevice(
             "1234",
             "test1",
@@ -546,8 +511,6 @@ class AdbSessionTest {
     @Test
     fun testTrackDeviceInfoEndsIfNoDeviceConnected(): Unit = runBlockingWithTimeout {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
-        val hostServices = createHostServices(fakeAdb)
         val deviceSelector = DeviceSelector.fromSerialNumber("1234")
 
         // Act
@@ -560,7 +523,6 @@ class AdbSessionTest {
     @Test
     fun testDeviceCoroutineScopeWorksForOnlineDevice(): Unit = runBlockingWithTimeout {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
         val fakeDevice =
             fakeAdb.connectDevice(
                 "1234",
@@ -572,7 +534,6 @@ class AdbSessionTest {
             )
         fakeDevice.deviceStatus = DeviceState.DeviceStatus.ONLINE
         val deviceSelector = DeviceSelector.fromSerialNumber(fakeDevice.deviceId)
-        val session = createHostServices(fakeAdb).session
 
         // Act
         var deviceCoroutineIsRunning = false
@@ -612,9 +573,7 @@ class AdbSessionTest {
     @Test
     fun testDeviceCoroutineScopeWorksForDisconnectedDevice(): Unit = runBlockingWithTimeout {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
         val deviceSelector = DeviceSelector.fromSerialNumber("1234")
-        val session = createHostServices(fakeAdb).session
 
         // Act
         var deviceCoroutineIsRunning = false
@@ -641,7 +600,6 @@ class AdbSessionTest {
     @Test
     fun testDeviceCoroutineScopeIsCancelledWithSessionClose(): Unit = runBlockingWithTimeout {
         // Prepare
-        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
         val fakeDevice =
             fakeAdb.connectDevice(
                 "1234",
@@ -653,7 +611,6 @@ class AdbSessionTest {
             )
         fakeDevice.deviceStatus = DeviceState.DeviceStatus.ONLINE
         val deviceSelector = DeviceSelector.fromSerialNumber(fakeDevice.deviceId)
-        val session = createHostServices(fakeAdb).session
 
         // Act
         var deviceCoroutineIsRunning = false
@@ -683,24 +640,6 @@ class AdbSessionTest {
 
         // Assert
         Assert.assertFalse(deviceCoroutineIsRunning)
-    }
-
-    private fun createHostServices(fakeAdb: FakeAdbServerProvider): AdbHostServices {
-        val host = registerCloseable(TestingAdbSessionHost())
-        val channelProvider = fakeAdb.createChannelProvider(host)
-        val session = registerCloseable(createSession(host, channelProvider))
-        return session.hostServices
-    }
-
-    private fun createSession(
-        host: AdbSessionHost,
-        channelProvider: AdbChannelProvider
-    ): AdbSession {
-        return AdbSession.create(
-            host,
-            channelProvider,
-            Duration.ofMillis(SOCKET_CONNECT_TIMEOUT_MS)
-        )
     }
 
     class MyTestException(message: String) : IOException(message)
