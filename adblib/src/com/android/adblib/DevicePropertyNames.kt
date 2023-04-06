@@ -28,4 +28,6 @@ object DevicePropertyNames {
     const val RO_PRODUCT_CPU_ABI = "ro.product.cpu.abi"
     const val RO_PRODUCT_MANUFACTURER = "ro.product.manufacturer"
     const val RO_PRODUCT_MODEL = "ro.product.model"
+    const val RO_SF_LCD_DENSITY = "ro.sf.lcd_density"  // screen density for physical devices
+    const val QEMU_SF_LCD_DENSITY = "qemu.sf.lcd_density"  // screen density for emulated devices
 }
