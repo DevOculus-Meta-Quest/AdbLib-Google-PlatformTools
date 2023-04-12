@@ -93,7 +93,7 @@ class FakeAdbServerProvider internal constructor(): AutoCloseable {
 
     fun installHostHandler(
         command: String,
-        handlerConstructor: Supplier<HostCommandHandler?>
+        handlerConstructor: Supplier<HostCommandHandler>
     ): FakeAdbServerProvider {
         builder.setHostCommandHandler(command, handlerConstructor)
         return this
