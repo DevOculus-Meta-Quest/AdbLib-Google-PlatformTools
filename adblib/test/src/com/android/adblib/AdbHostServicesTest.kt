@@ -23,6 +23,7 @@ import com.android.fakeadbserver.DeviceState
 import com.android.fakeadbserver.MdnsService
 import com.android.fakeadbserver.devicecommandhandlers.SyncCommandHandler
 import com.android.fakeadbserver.hostcommandhandlers.FaultyVersionCommandHandler
+import com.android.fakeadbserver.hostcommandhandlers.VersionCommandHandler
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert
@@ -134,7 +135,7 @@ class AdbHostServicesTest {
     @Test
     fun testVersionFaultyProtocol() {
         // Prepare
-        fakeAdb.installHostHandler(FaultyVersionCommandHandler.COMMAND) { FaultyVersionCommandHandler() }
+        fakeAdb.installHostHandler(VersionCommandHandler.COMMAND) { FaultyVersionCommandHandler() }
 
         // Act (should throw)
         exceptionRule.expect(AdbProtocolErrorException::class.java)
