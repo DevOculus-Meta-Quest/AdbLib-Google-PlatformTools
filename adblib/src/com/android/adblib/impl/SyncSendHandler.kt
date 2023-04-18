@@ -172,7 +172,7 @@ internal class SyncSendHandler(
             }
 
             // We have data from 0 to position(8+byteCount),/ Write them all to the output
-            val writeBuffer = workBuffer.afterChannelRead(0)
+            val writeBuffer = workBuffer.afterChannelRead(useMarkedPosition = false)
             workBuffer.setInt(lengthPosition, byteCount)
             deviceChannel.writeExactly(writeBuffer)
 

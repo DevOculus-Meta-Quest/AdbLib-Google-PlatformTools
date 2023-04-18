@@ -132,16 +132,23 @@ class ResizableBuffer(initialCapacity: Int = 256, private val maxCapacity: Int =
     /**
      * Returns the underlying [ByteBuffer] after a `channel read` operation so that data can
      * be read from the [ByteBuffer].
+     *
+     * @param useMarkedPosition if set to true the returned ByteBuffer sets the [position] to
+     * the position marked by [forChannelRead] method. Otherwise, the [position] is set to 0.
      */
-    fun afterChannelRead(newPosition: Int = -1): ByteBuffer {
+    fun afterChannelRead(useMarkedPosition: Boolean = true): ByteBuffer {
         try {
-            // Data is from `mark` to `position`, so set limit = position, position = mark, and mark = -1
-            val newLimit = buffer.position()
-            buffer.reset() // reset position to mark
-            val mark = if (newPosition >= 0) newPosition else buffer.position()
-            buffer.rewind() // Clear mark (i.e. -1)
-            buffer.position(mark)
-            buffer.limit(newLimit)
+            if (useMarkedPosition) {
+                // Data is from `mark` to `position`, so set limit = position, position = mark, and mark = -1
+                val newLimit = buffer.position()
+                buffer.reset() // reset position to mark
+                val mark = buffer.position()
+                buffer.rewind() // Clear mark (i.e. -1)
+                buffer.position(mark)
+                buffer.limit(newLimit)
+            } else {
+                buffer.flip()
+            }
         } catch (e: InvalidMarkException) {
             throw IllegalStateException("Buffer has not been prepared for a read operation", e)
         }

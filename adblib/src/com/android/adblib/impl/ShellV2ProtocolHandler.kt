@@ -125,7 +125,7 @@ internal class ShellV2ProtocolWriter(
         kind: ShellV2PacketKind,
         timeout: TimeoutTracker = TimeoutTracker.INFINITE
     ) {
-        val buffer = workBuffer.afterChannelRead(0)
+        val buffer = workBuffer.afterChannelRead(useMarkedPosition = false)
         // Buffer should contain header + data to send
         val packetLength = buffer.remaining() - SHELL_PACKET_HEADER_SIZE
         assert(packetLength >= 0)
