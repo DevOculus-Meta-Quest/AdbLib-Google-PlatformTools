@@ -93,3 +93,11 @@ TBD: This is currently not implemented
 
 adblib defines its own custom `AdbLogger` abstraction to ensure compatibility
 with a wide range of logging facilities.
+
+To set logging in Android Studio, open the "Debug Log Settings" dialog. e.g:
+the following configuration matches adblib and ddmlib.
+
+```
+#com.android.adblib.tools.debugging.impl.JdwpProcessPropertiesCollector:all
+#com.android.ddmlib:all
+```
