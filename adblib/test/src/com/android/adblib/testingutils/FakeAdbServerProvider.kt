@@ -17,7 +17,6 @@ package com.android.adblib.testingutils
 
 import com.android.adblib.AdbChannel
 import com.android.adblib.AdbServerChannelProvider
-import com.android.adblib.AdbChannelProviderFactory
 import com.android.adblib.AdbSessionHost
 import com.android.adblib.impl.channels.AdbSocketChannelImpl
 import com.android.fakeadbserver.DeviceState
@@ -198,7 +197,7 @@ class FakeAdbServerProvider internal constructor(): AutoCloseable {
     class TestingChannelProvider(host: AdbSessionHost, portSupplier: suspend () -> Int) :
       AdbServerChannelProvider {
 
-        private val provider = AdbChannelProviderFactory.createOpenLocalHost(host, portSupplier)
+        private val provider = AdbServerChannelProvider.createOpenLocalHost(host, portSupplier)
 
         private val createdChannelsField = ArrayList<TestingAdbChannel>()
 

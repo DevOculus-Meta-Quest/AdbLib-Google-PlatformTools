@@ -1,9 +1,14 @@
 package com.android.adblib
 
+import com.android.adblib.impl.AdbChannelProviderConnectAddresses
+import com.android.adblib.impl.AdbChannelProviderOpenLocalHost
 import com.android.adblib.impl.TimeoutTracker
 import java.io.IOException
+import java.net.InetSocketAddress
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
+
+private const val DEFAULT_ADB_HOST_PORT = 5037
 
 /**
  * A provider of [AdbChannel] instances ready for communication with an ADB host.
@@ -11,7 +16,7 @@ import java.util.concurrent.TimeoutException
  * This abstraction is used to ensure various service implementations don't depend on concrete
  * implementations of acquiring connections to the ADB host.
  *
- * See [AdbChannelProviderFactory] for getting access to commonly used implementation.
+ * See the Companion object for getting access to the commonly used implementations.
  */
 interface AdbServerChannelProvider {
 
@@ -34,6 +39,23 @@ interface AdbServerChannelProvider {
         timeout: Long = Long.MAX_VALUE,
         unit: TimeUnit = TimeUnit.MILLISECONDS
     ): AdbChannel
+
+    companion object {
+
+        fun createOpenLocalHost(
+            host: AdbSessionHost,
+            portSupplier: suspend () -> Int = { DEFAULT_ADB_HOST_PORT }
+        ): AdbServerChannelProvider {
+            return AdbChannelProviderOpenLocalHost(host, portSupplier)
+        }
+
+        fun createConnectAddresses(
+            host: AdbSessionHost,
+            socketAddressesSupplier: suspend () -> List<InetSocketAddress>
+        ): AdbServerChannelProvider {
+            return AdbChannelProviderConnectAddresses(host, socketAddressesSupplier)
+        }
+    }
 }
 
 internal suspend fun AdbServerChannelProvider.createChannel(timeout: TimeoutTracker): AdbChannel {

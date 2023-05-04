@@ -142,7 +142,7 @@ interface AdbSession : AutoCloseable {
         @JvmStatic
         fun create(
             host: AdbSessionHost,
-            channelProvider: AdbServerChannelProvider = AdbChannelProviderFactory.createOpenLocalHost(host),
+            channelProvider: AdbServerChannelProvider = AdbServerChannelProvider.createOpenLocalHost(host),
             connectionTimeout: Duration = Duration.ofSeconds(30)
         ): AdbSession {
             return AdbSessionImpl(host, channelProvider, connectionTimeout.toMillis())

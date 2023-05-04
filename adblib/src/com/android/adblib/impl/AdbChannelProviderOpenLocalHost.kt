@@ -2,7 +2,6 @@ package com.android.adblib.impl
 
 import com.android.adblib.AdbChannel
 import com.android.adblib.AdbServerChannelProvider
-import com.android.adblib.AdbChannelProviderFactory
 import com.android.adblib.AdbSessionHost
 import java.net.InetSocketAddress
 import java.util.concurrent.TimeUnit
@@ -22,7 +21,7 @@ internal class AdbChannelProviderOpenLocalHost(
     private val portSupplier: suspend () -> Int
 ) : AdbServerChannelProvider {
 
-    private val channelProvider = AdbChannelProviderFactory.createConnectAddresses(host) {
+    private val channelProvider = AdbServerChannelProvider.createConnectAddresses(host) {
         val port = portSupplier()
 
         // Try IPV4 first, then IPV6
