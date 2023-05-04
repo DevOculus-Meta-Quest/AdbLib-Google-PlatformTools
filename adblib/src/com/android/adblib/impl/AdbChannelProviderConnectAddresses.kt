@@ -16,7 +16,7 @@
 package com.android.adblib.impl
 
 import com.android.adblib.AdbChannel
-import com.android.adblib.AdbChannelProvider
+import com.android.adblib.AdbServerChannelProvider
 import com.android.adblib.AdbSessionHost
 import com.android.adblib.impl.channels.AdbSocketChannelImpl
 import com.android.adblib.utils.SuppressedExceptions
@@ -30,20 +30,20 @@ import java.nio.channels.AsynchronousSocketChannel
 import java.util.concurrent.TimeUnit
 
 /**
- * An implementation of [AdbChannelProvider] that connect to an existing ADB Host running
+ * An implementation of [AdbServerChannelProvider] that connect to an existing ADB Host running
  * on one of the addresses returned by [socketAddressesSupplier].
  */
 internal class AdbChannelProviderConnectAddresses(
   private val host: AdbSessionHost,
   /**
-     * Supplier of the list of [InetSocketAddress] this [AdbChannelProvider] should connect to
+     * Supplier of the list of [InetSocketAddress] this [AdbServerChannelProvider] should connect to
      * locate an instance of the ADB server. This is invoked on-demand so that the
      * implementor has the opportunity to choose a port until an actual connection is opened,
      * i.e. in case the ADB server is started on-demand or via some other dynamic
      * configuration behavior.
      */
     private val socketAddressesSupplier: suspend () -> List<InetSocketAddress>
-) : AdbChannelProvider {
+) : AdbServerChannelProvider {
 
     override suspend fun createChannel(timeout: Long, unit: TimeUnit): AdbChannel {
         val tracker = TimeoutTracker(host.timeProvider, timeout, unit)

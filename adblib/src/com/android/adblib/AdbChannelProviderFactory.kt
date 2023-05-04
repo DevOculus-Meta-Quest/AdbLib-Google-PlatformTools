@@ -27,14 +27,14 @@ class AdbChannelProviderFactory {
         fun createOpenLocalHost(
           host: AdbSessionHost,
           portSupplier: suspend () -> Int = { DEFAULT_ADB_HOST_PORT }
-        ): AdbChannelProvider {
+        ): AdbServerChannelProvider {
             return AdbChannelProviderOpenLocalHost(host, portSupplier)
         }
 
         fun createConnectAddresses(
           host: AdbSessionHost,
           socketAddressesSupplier: suspend () -> List<InetSocketAddress>
-        ): AdbChannelProvider {
+        ): AdbServerChannelProvider {
             return AdbChannelProviderConnectAddresses(host, socketAddressesSupplier)
         }
     }

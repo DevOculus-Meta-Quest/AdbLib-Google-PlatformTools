@@ -16,7 +16,7 @@
 package com.android.adblib.impl.services
 
 import com.android.adblib.AdbChannel
-import com.android.adblib.AdbChannelProvider
+import com.android.adblib.AdbServerChannelProvider
 import com.android.adblib.AdbDeviceFailResponseException
 import com.android.adblib.AdbFailResponseException
 import com.android.adblib.AdbHostFailResponseException
@@ -49,7 +49,10 @@ private const val TRANSPORT_ID_BYTE_COUNT = 8
 /**
  * Helper class used to perform service requests with the ADB host
  */
-internal class AdbServiceRunner(val session: AdbSession, private val channelProvider: AdbChannelProvider) {
+internal class AdbServiceRunner(
+    val session: AdbSession,
+    private val channelProvider: AdbServerChannelProvider
+) {
 
     val host : AdbSessionHost
         get() = session.host

@@ -136,13 +136,13 @@ interface AdbSession : AutoCloseable {
          *
          * @param host The [AdbSessionHost] implementation provided by the hosting application for
          *             environment specific configuration
-         * @param channelProvider The [AdbChannelProvider] implementation to connect to the ADB server
+         * @param channelProvider The [AdbServerChannelProvider] implementation to connect to the ADB server
          * @param connectionTimeout The timeout to use when creating a connection the ADB Server
          */
         @JvmStatic
         fun create(
             host: AdbSessionHost,
-            channelProvider: AdbChannelProvider = AdbChannelProviderFactory.createOpenLocalHost(host),
+            channelProvider: AdbServerChannelProvider = AdbChannelProviderFactory.createOpenLocalHost(host),
             connectionTimeout: Duration = Duration.ofSeconds(30)
         ): AdbSession {
             return AdbSessionImpl(host, channelProvider, connectionTimeout.toMillis())

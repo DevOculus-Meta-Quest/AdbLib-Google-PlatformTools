@@ -1,6 +1,6 @@
 package com.android.adblib.impl
 
-import com.android.adblib.AdbChannelProvider
+import com.android.adblib.AdbServerChannelProvider
 import com.android.adblib.AdbHostServices
 import com.android.adblib.AdbHostServices.DeviceInfoFormat
 import com.android.adblib.AdbSessionHost
@@ -24,7 +24,7 @@ import java.util.concurrent.TimeUnit
 
 internal class AdbHostServicesImpl(
   override val session: AdbSession,
-  channelProvider: AdbChannelProvider,
+  channelProvider: AdbServerChannelProvider,
   private val timeout: Long,
   private val unit: TimeUnit
 ) : AdbHostServices {

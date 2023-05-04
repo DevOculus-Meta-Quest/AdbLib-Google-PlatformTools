@@ -16,7 +16,7 @@
 package com.android.adblib.impl
 
 import com.android.adblib.AdbChannel
-import com.android.adblib.AdbChannelProvider
+import com.android.adblib.AdbServerChannelProvider
 import com.android.adblib.AdbDeviceServices
 import com.android.adblib.AdbDeviceSyncServices
 import com.android.adblib.AdbInputChannel
@@ -53,7 +53,7 @@ private const val ABB_ARG_SEPARATOR = "\u0000"
 
 internal class AdbDeviceServicesImpl(
   override val session: AdbSession,
-  channelProvider: AdbChannelProvider,
+  channelProvider: AdbServerChannelProvider,
   private val timeout: Long,
   private val unit: TimeUnit
 ) : AdbDeviceServices {

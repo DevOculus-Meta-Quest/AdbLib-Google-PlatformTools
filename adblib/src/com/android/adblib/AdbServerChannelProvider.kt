@@ -13,7 +13,7 @@ import java.util.concurrent.TimeoutException
  *
  * See [AdbChannelProviderFactory] for getting access to commonly used implementation.
  */
-interface AdbChannelProvider {
+interface AdbServerChannelProvider {
 
     /**
      * Opens a new [AdbChannel] to communicate with an ADB Server. Implementations can decide to
@@ -36,6 +36,6 @@ interface AdbChannelProvider {
     ): AdbChannel
 }
 
-internal suspend fun AdbChannelProvider.createChannel(timeout: TimeoutTracker): AdbChannel {
+internal suspend fun AdbServerChannelProvider.createChannel(timeout: TimeoutTracker): AdbChannel {
     return createChannel(timeout.remainingNanos, TimeUnit.NANOSECONDS)
 }

@@ -1,14 +1,14 @@
 package com.android.adblib.impl
 
 import com.android.adblib.AdbChannel
-import com.android.adblib.AdbChannelProvider
+import com.android.adblib.AdbServerChannelProvider
 import com.android.adblib.AdbChannelProviderFactory
 import com.android.adblib.AdbSessionHost
 import java.net.InetSocketAddress
 import java.util.concurrent.TimeUnit
 
 /**
- * An implementation of [AdbChannelProvider] that connect to an existing ADB Host running
+ * An implementation of [AdbServerChannelProvider] that connect to an existing ADB Host running
  * on `localhost` using the port returned by the specified [portSupplier].
  */
 internal class AdbChannelProviderOpenLocalHost(
@@ -20,7 +20,7 @@ internal class AdbChannelProviderOpenLocalHost(
      * configuration behavior.
      */
     private val portSupplier: suspend () -> Int
-) : AdbChannelProvider {
+) : AdbServerChannelProvider {
 
     private val channelProvider = AdbChannelProviderFactory.createConnectAddresses(host) {
         val port = portSupplier()
