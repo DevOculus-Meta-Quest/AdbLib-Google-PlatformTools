@@ -17,87 +17,49 @@ package com.android.adblib.impl
 
 import com.android.adblib.AdbChannel
 import com.android.adblib.AdbServerChannelProvider
+import com.android.adblib.AdbServerStartup
 import com.android.adblib.AdbSessionHost
-import kotlinx.coroutines.runInterruptible
-import java.io.File
 import java.io.IOException
 import java.net.InetSocketAddress
-import java.nio.file.Paths
 import java.util.concurrent.TimeUnit
 
-private const val DEFAULT_ADB_PORT = 5037
+internal data class AdbServerChannelConnectOptions(val defaultPort: Int)
 
 /**
  * [AdbServerChannelProvider] that can start the Adb Server if it was not located
  */
 internal class AdbChannelProviderWithServerStartup(
-    private val host: AdbSessionHost
+    private val host: AdbSessionHost,
+    private val connectOptions: AdbServerChannelConnectOptions,
+    private val adbServerStartup: AdbServerStartup = AdbServerStartupImpl(host)
 ) : AdbServerChannelProvider {
-
-    private val socketAddresses = listOf(
-        InetSocketAddress("127.0.0.1", DEFAULT_ADB_PORT),
-        InetSocketAddress("::1", DEFAULT_ADB_PORT)
-    )
-    private val delegateAdbChannelProvider =
-        AdbChannelProviderConnectAddresses(host) { socketAddresses }
 
     override suspend fun createChannel(timeout: Long, unit: TimeUnit): AdbChannel {
         val tracker = TimeoutTracker(host.timeProvider, timeout, unit)
 
+        var port = connectOptions.defaultPort
         try {
-            return delegateAdbChannelProvider.createChannel(
-                tracker.remainingNanos,
-                TimeUnit.NANOSECONDS
-            )
+            return delegateCreateChannel(port, tracker)
         } catch (e: IOException) {
             host.logger.debug { "Couldn't open ADB connection to ADB server. Will try starting ADB server first." }
         }
-
         tracker.throwIfElapsed()
-        startAdbServer(tracker.remainingNanos, TimeUnit.NANOSECONDS)
+        port = adbServerStartup.start(port, tracker.remainingNanos, TimeUnit.NANOSECONDS)
+
+        return delegateCreateChannel(port, tracker)
+    }
+
+    private suspend fun delegateCreateChannel(port: Int, tracker: TimeoutTracker): AdbChannel {
+        val socketAddresses = listOf(
+            InetSocketAddress("127.0.0.1", port),
+            InetSocketAddress("::1", port)
+        )
+        val delegateAdbChannelProvider =
+            AdbChannelProviderConnectAddresses(host) { socketAddresses }
 
         return delegateAdbChannelProvider.createChannel(
             tracker.remainingNanos,
             TimeUnit.NANOSECONDS
         )
-    }
-
-    private suspend fun startAdbServer(timeout: Long, unit: TimeUnit) {
-        host.logger.debug { "Starting ADB server on port $DEFAULT_ADB_PORT." }
-        host.timeProvider.withErrorTimeout(timeout, unit) {
-            runInterruptible(host.blockingIoDispatcher) {
-                val processBuilder = ProcessBuilder(getAdbLaunchCommand())
-                val process = processBuilder.start()
-                val exitCode = process.waitFor()
-                if (exitCode != 0) {
-                    throw IOException("adb start-server failed. Exit code: $exitCode")
-                }
-            }
-        }
-    }
-
-    private fun getAdbLaunchCommand(): List<String> {
-        return listOf(getAdbFile(), "-P", DEFAULT_ADB_PORT.toString(), "start-server")
-    }
-
-    private fun getAdbFile(): String {
-        val os = System.getProperty("os.name")
-        val adbExecutableName = if (os.startsWith("Windows")) "adb.exe" else "adb"
-        return findOnPath(adbExecutableName)
-            ?: throw IOException("Couldn't locate '$adbExecutableName' on PATH")
-    }
-
-    private fun findOnPath(executableName: String): String? {
-        val pathEnvVariable =
-            System.getenv("PATH")
-                ?: throw IOException("No PATH environmental variable is defined")
-        for (binDir in pathEnvVariable.split(File.pathSeparator)) {
-            val file = Paths.get(binDir).resolve(executableName).toFile()
-            if (file.isFile) {
-                return file.path
-            }
-        }
-        host.logger.debug { "$executableName could not be located in any of the $pathEnvVariable folders" }
-        return null
     }
 }

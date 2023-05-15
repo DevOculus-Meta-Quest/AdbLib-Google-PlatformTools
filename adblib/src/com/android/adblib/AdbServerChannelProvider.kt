@@ -3,6 +3,7 @@ package com.android.adblib
 import com.android.adblib.impl.AdbChannelProviderConnectAddresses
 import com.android.adblib.impl.AdbChannelProviderOpenLocalHost
 import com.android.adblib.impl.AdbChannelProviderWithServerStartup
+import com.android.adblib.impl.AdbServerChannelConnectOptions
 import com.android.adblib.impl.TimeoutTracker
 import java.io.IOException
 import java.net.InetSocketAddress
@@ -60,7 +61,12 @@ interface AdbServerChannelProvider {
         fun createConnectAddressesWithServerStartup(
             host: AdbSessionHost
         ): AdbServerChannelProvider {
-            return AdbChannelProviderWithServerStartup(host)
+            return AdbChannelProviderWithServerStartup(
+                host,
+                AdbServerChannelConnectOptions(
+                    DEFAULT_ADB_HOST_PORT
+                )
+            )
         }
     }
 }
