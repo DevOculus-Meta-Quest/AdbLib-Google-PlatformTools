@@ -95,9 +95,24 @@ adblib defines its own custom `AdbLogger` abstraction to ensure compatibility
 with a wide range of logging facilities.
 
 To set logging in Android Studio, open the "Debug Log Settings" dialog. e.g:
-the following configuration matches adblib and ddmlib.
 
 ```
-#com.android.adblib.tools.debugging.impl.JdwpProcessPropertiesCollector:all
-#com.android.ddmlib:all
+#com.android.adblib.tools.debugging.impl.JdwpProcessPropertiesCollector
+#com.android.adblib.tools.debugging.impl.JdwpSessionProxy
+#com.android.adblib.tools.debugging.impl.JdwpProcessImpl
+#com.android.adblib.tools.debugging.DdmsPacketsHandler
+#com.android.adblib.impl.AdbBufferedInputChannel
+#com.android.adblib.tools.debugging.impl.JdwpSessionProxy:all
+#com.android.adblib.tools.debugging.impl.SharedJdwpSessionImpl:all
+#com.android.adblib.tools.debugging.impl.SharedJdwpSessionImpl$JdwpPacketReceiverImpl$ReceiverFlowImpl:all
+#com.android.adblib.tools.debugging.impl.SharedJdwpSessionImpl$PacketSender:all
+#com.android.adblib.tools.debugging.impl.JdwpSessionImpl:all
+#com.android.adblib.tools.debugging.SharedJdwpSession:all
+#com.android.adblib.impl.AdbWriteBackOutputChannel:all
+#com.android.adblib.impl.AdbWriteBackOutputChannel$WriteBackWorker:all
+#com.android.adblib.impl.AdbReadAheadInputChannel:all
+#com.android.adblib.tools.debugging.impl.JdwpProcessProfilerImpl:all
+#com.android.adblib.tools.debugging.packets.ddms.MutableDdmsChunk:all
+#com.android.adblib.impl.services.AdbServiceRunner:all
+#com.android.adblib.tools.debugging.impl.AppProcessTrackerImpl:all
 ```
