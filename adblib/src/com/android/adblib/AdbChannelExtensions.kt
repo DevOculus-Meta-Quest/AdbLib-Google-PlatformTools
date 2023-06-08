@@ -2,6 +2,7 @@ package com.android.adblib
 
 import com.android.adblib.impl.channels.DEFAULT_CHANNEL_BUFFER_SIZE
 import com.android.adblib.utils.ResizableBuffer
+import java.nio.ByteBuffer
 
 /**
  * Forwards the contents of this [AdbInputChannel] to an [AdbOutputChannel] and returns the
@@ -75,4 +76,17 @@ suspend fun AdbInputChannel.readRemaining(
         // Data is now from [0, previousPosition + count], set limit = capacity
         workBuffer.clearToPosition(previousPosition + count)
     }
+}
+
+/**
+ * Reads [count] bytes from this [AdbInputChannel] and appends them to [workBuffer], increasing
+ * the [ResizableBuffer] size as needed.
+ *
+ * Use [ResizableBuffer.afterChannelRead] to access the [ByteBuffer] where the
+ * [count] bytes are stored.
+ */
+suspend inline fun AdbInputChannel.readNBytes(workBuffer: ResizableBuffer, count: Int) {
+    // Optional data is from [0, position], ensure limit = position + count
+    val buffer = workBuffer.forChannelRead(count)
+    readExactly(buffer)
 }
