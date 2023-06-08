@@ -22,7 +22,7 @@ import java.time.temporal.ChronoUnit
 
 class TestingAdbLoggerFactory : AdbLoggerFactory {
 
-    var minLevel: AdbLogger.Level = AdbLogger.Level.WARN
+    var minLevel: AdbLogger.Level = AdbLogger.Level.INFO
 
     override val logger: AdbLogger by lazy {
         TestingAdbLogger(this)
