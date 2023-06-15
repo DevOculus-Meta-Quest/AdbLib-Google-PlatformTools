@@ -19,6 +19,8 @@ object AdbProtocolUtils {
     val ADB_CHARSET: Charset = StandardCharsets.UTF_8
     const val ADB_NEW_LINE = "\n"
 
+    private val printableCharactersRegex = Regex("\\p{C}")
+
     fun isOkay(buffer: ByteBuffer): Boolean {
         return is4Letters(buffer, "OKAY")
     }
@@ -89,7 +91,7 @@ object AdbProtocolUtils {
             sb2.append(String.format("%c", statusByte.toChar()))
         }
         val overflow = if (status.remaining() > maxCount) " [truncated]" else ""
-        return "$sb1 $sb2$overflow"
+        return "$sb1 ${sb2.toString().replace(printableCharactersRegex, ".")}$overflow"
     }
 
     fun createDecoder(): CharsetDecoder {

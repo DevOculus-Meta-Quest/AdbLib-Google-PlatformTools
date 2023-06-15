@@ -81,6 +81,18 @@ class AdbProtocolUtilsTest {
     }
 
     @Test
+    fun bufferToByteDumpStringShouldUsePlaceholderForNonPrintableCharacters() {
+        // Prepare
+        val buffer = createBuffer("\n\t\u0000")
+
+        // Act
+        val result = AdbProtocolUtils.bufferToByteDumpString(buffer)
+
+        // Assert
+        assertEquals("0a0900 ...", result)
+    }
+
+    @Test
     fun isOkayShouldWork() {
         // Prepare
         val buffer = createBuffer("OKAY")
