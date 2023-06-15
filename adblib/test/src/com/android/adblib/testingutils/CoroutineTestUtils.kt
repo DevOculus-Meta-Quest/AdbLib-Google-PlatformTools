@@ -20,7 +20,6 @@ import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
-import kotlinx.coroutines.yield
 import java.time.Duration
 import kotlin.math.max
 import kotlin.math.min
@@ -32,28 +31,8 @@ object CoroutineTestUtils {
         block: suspend CoroutineScope.() -> T
     ): T {
         return runBlocking {
-            // The goal with "blockTimeoutException" is to make sure "block" can throw a
-            // TimeoutCancellationException to the caller of this method.
-            var blockTimeoutException: TimeoutCancellationException?  = null
-            try {
-                withTimeout(timeout.toMillis()) {
-                    try {
-                        block(this)
-                    } catch(e: TimeoutCancellationException) {
-                        blockTimeoutException = e
-                        throw e
-                    }
-                }
-            } catch (e: TimeoutCancellationException) {
-                blockTimeoutException?.also {
-                    // If "block" threw a timeout exception, then rethrow it, as the exception
-                    // has nothing to do with our "withTimeout" wrapper
-                    throw it
-                }
-                throw AssertionError(
-                    "A test did not terminate within the specified timeout ($timeout), " +
-                            "there is a bug somewhere (in the test or in the tested code)", e
-                )
+            runTestBlockWithTimeout(timeout, "runBlocking") {
+                block(this)
             }
         }
     }
@@ -62,17 +41,10 @@ object CoroutineTestUtils {
         timeout: Duration = Duration.ofSeconds(30),
         predicate: suspend () -> Boolean
     ) {
-        try {
-            withTimeout(timeout.toMillis()) {
-                while (!predicate()) {
-                    delayForTimeout(timeout)
-                }
+        return runTestBlockWithTimeout(timeout, "yieldUntil") {
+            while (!predicate()) {
+                delayForTimeout(timeout)
             }
-        } catch (e: TimeoutCancellationException) {
-            throw AssertionError(
-                "A yieldUntil condition was not satisfied within the specified timeout " +
-                        "($timeout), there is a bug somewhere (in the test or in the tested code)", e
-            )
         }
     }
 
@@ -90,14 +62,37 @@ object CoroutineTestUtils {
             }
         }
 
+        return runTestBlockWithTimeout(timeout, "waitNonNull") {
+            loop(provider)
+        }
+    }
+
+    private suspend fun <T> runTestBlockWithTimeout(
+        timeout: Duration = Duration.ofSeconds(30),
+        blockDescription: String,
+        block: suspend () -> T
+    ): T {
+        // The goal with "blockTimeoutException" is to make sure "block" can throw a
+        // TimeoutCancellationException to the caller of this method.
+        var blockTimeoutException: TimeoutCancellationException? = null
         return try {
             withTimeout(timeout.toMillis()) {
-                loop(provider)
+                try {
+                    block()
+                } catch (e: TimeoutCancellationException) {
+                    blockTimeoutException = e
+                    throw e
+                }
             }
         } catch (e: TimeoutCancellationException) {
+            blockTimeoutException?.also {
+                // If "block" threw a timeout exception, then rethrow it, as the exception
+                // has nothing to do with our "withTimeout" wrapper
+                throw it
+            }
             throw AssertionError(
-                "A waitNonNull condition was not satisfied within the specified timeout " +
-                        "($timeout), there is a bug somewhere (in the test or in the tested code)", e
+                "A '$blockDescription' did not terminate within the specified timeout ($timeout), " +
+                        "there is a bug somewhere (in the test or in the tested code)", e
             )
         }
     }
