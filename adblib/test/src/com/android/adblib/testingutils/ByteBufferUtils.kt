@@ -27,4 +27,12 @@ object ByteBufferUtils {
     fun stringToBytes(value: String): ByteArray {
         return value.toByteArray(AdbProtocolUtils.ADB_CHARSET)
     }
+
+    fun byteBufferToByteArray(buffer: ByteBuffer): ByteArray {
+        val result = ByteArray(buffer.remaining())
+        val savedPosition = buffer.position()
+        buffer.get(result)
+        buffer.position(savedPosition)
+        return result
+    }
 }
