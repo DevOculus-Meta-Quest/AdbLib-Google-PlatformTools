@@ -23,7 +23,6 @@ import java.util.concurrent.TimeUnit
 internal class ByteBufferAdbInputChannelImpl(
     private val sourceBuffer: ByteBuffer
 ) : AdbInputChannel {
-
     private var closed = false
 
     override suspend fun read(buffer: ByteBuffer, timeout: Long, unit: TimeUnit): Int {
@@ -37,12 +36,11 @@ internal class ByteBufferAdbInputChannelImpl(
 
         // Write bytes from source buffer to destination
         val count = Integer.min(sourceBuffer.remaining(), buffer.remaining())
-        val slice = sourceBuffer.slice()
-        slice.limit(count) // slice = sourceBuffer range [position,position+count[
-        buffer.put(slice)
-
-        // Advance source buffer
-        sourceBuffer.position(sourceBuffer.position() + count)
+        val savedLimit = sourceBuffer.limit()
+        // copy sourceBuffer from [position, position + count]
+        sourceBuffer.limit(sourceBuffer.position() + count)
+        buffer.put(sourceBuffer)
+        sourceBuffer.limit(savedLimit)
         return count
     }
 
