@@ -16,13 +16,16 @@
 package com.android.adblib.impl
 
 import com.android.adblib.CoroutineScopeCache
+import com.android.adblib.getOrPutSynchronized
 import com.android.adblib.testingutils.CloseablesRule
 import com.android.adblib.testingutils.CoroutineTestUtils.runBlockingWithTimeout
 import com.android.adblib.testingutils.CoroutineTestUtils.yieldUntil
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
@@ -33,6 +36,8 @@ import org.junit.Assert
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.ExpectedException
+import java.util.concurrent.atomic.AtomicInteger
+import kotlin.test.assertEquals
 
 class CoroutineScopeCacheTest {
 
@@ -295,5 +300,59 @@ class CoroutineScopeCacheTest {
         Assert.assertEquals("blah", value)
         Assert.assertFalse(job?.isActive ?: true)
         Assert.assertFalse(cache.scope.isActive)
+    }
+
+    @Test
+    fun test_GetOrPutSynchronized_Works() {
+        // Prepare
+        val scope = CoroutineScope(SupervisorJob())
+        val cache = registerCloseable(CoroutineScopeCacheImpl(scope))
+        val key = TestKey("5")
+
+        // Act
+        val value = cache.getOrPutSynchronized(key) { "bar" }
+
+        // Assert
+        Assert.assertEquals("bar", value)
+    }
+
+    @Test
+    fun test_GetOrPutSynchronized_DoesNotOverrideValue() {
+        // Prepare
+        val scope = CoroutineScope(SupervisorJob())
+        val cache = registerCloseable(CoroutineScopeCacheImpl(scope))
+        val key = TestKey("5")
+
+        // Act
+        val value1 = cache.getOrPutSynchronized(key) { "bar" }
+        val value2 = cache.getOrPutSynchronized(key) { "bar2" }
+
+        // Assert
+        Assert.assertEquals("bar", value1)
+        Assert.assertEquals("bar", value2)
+    }
+
+    @Test
+    fun test_GetOrPutSynchronized_IsSynchronized(): Unit = runBlockingWithTimeout {
+        // Prepare
+        val scope = CoroutineScope(SupervisorJob())
+        val cache = registerCloseable(CoroutineScopeCacheImpl(scope))
+        class MyValue
+        val key = CoroutineScopeCache.Key<MyValue>("myValue")
+
+        // Act
+        val runCount = AtomicInteger()
+        val values = (1..1_000).map {
+            async(Dispatchers.Default) {
+                cache.getOrPutSynchronized(key) {
+                    runCount.incrementAndGet()
+                    MyValue()
+                }
+            }
+        }.awaitAll()
+
+        // Assert
+        assertEquals(1, runCount.get())
+        assertEquals(1, values.toSet().size)
     }
 }

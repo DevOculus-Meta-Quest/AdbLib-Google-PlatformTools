@@ -118,3 +118,44 @@ interface CoroutineScopeCache : AutoCloseable {
         }
     }
 }
+
+/**
+ * Same as [getOrPut], but guarantees [defaultValue] is executed only once
+ */
+fun <T> CoroutineScopeCache.getOrPutSynchronized(
+    key: CoroutineScopeCache.Key<T>,
+    defaultValue: () -> T): T {
+
+    // Note: Using unsafe cast for the "key" is ok, as the "Key" never stores any "T" value, as
+    //  "T" is only used as a "marker" to make the "getOrPut" API type safe.
+    @Suppress("UNCHECKED_CAST")
+    return getOrPut(key as CoroutineScopeCache.Key<RunOnlyOnce<T>>) {
+        // Note: "getOrPut" may run this block multiple times (in case of concurrent access),
+        // but will always a single unique instance of "RunOnlyOnce" (the other ones are
+        // discarded).
+        RunOnlyOnce()
+    }.runOnlyOnce(defaultValue)
+}
+
+private class RunOnlyOnce<T> {
+    @Volatile
+    private var lazyValue: T? = null
+
+    fun runOnlyOnce(block: () -> T): T {
+        // Use "double check locking" to ensure the code is run only once
+        // See https://en.wikipedia.org/wiki/Double-checked_locking#Usage_in_Java
+        var localValue = lazyValue
+        if (localValue == null) {
+            synchronized(this) {
+                localValue = lazyValue
+                if (localValue == null) {
+                    block().also {
+                        lazyValue = it
+                        localValue = it
+                    }
+                }
+            }
+        }
+        return localValue!!
+    }
+}
