@@ -482,6 +482,18 @@ interface ShellV2Collector<T> {
 }
 
 /**
+ * Describes capabilities of [ShellCollector] or [ShellV2Collector] implementations
+ */
+interface ShellCollectorCapabilities {
+
+    /**
+     * Whether this [ShellCollector] or [ShellV2Collector] implementation should be
+     * used with [ShellCommand.executeAsSingleOutput] instead of [ShellCommand.execute]
+     */
+    val isSingleOutput: Boolean
+}
+
+/**
  * Creates a [ShellCommand] to [execute][ShellCommand.execute] a shell [command] on a
  * given [device], taking advantage of features available only on more recent devices
  * (e.g. [AdbDeviceServices.shellV2]), in addition to other customization such as

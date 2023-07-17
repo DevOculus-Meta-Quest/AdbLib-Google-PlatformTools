@@ -54,10 +54,12 @@ import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert
 import org.junit.BeforeClass
+import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.ExpectedException
 import java.io.ByteArrayOutputStream
+import java.io.EOFException
 import java.io.IOException
 import java.nio.ByteBuffer
 import java.nio.file.attribute.FileTime
@@ -945,73 +947,36 @@ class AdbDeviceServicesTest {
         Assert.assertEquals(10, collectedExitCode)
     }
 
+    @Ignore("Ignore until we FakeAdb has support for disconnecting devices")
     @Test
-    fun testShellInputChannelCollectorUseWorks(): Unit = runBlockingWithTimeout {
+    fun testShellCommandExecuteSingleOutputIsTransparentToShellExceptions(): Unit = runBlockingWithTimeout {
         // Prepare
         val fakeDevice = addFakeDevice(fakeAdb)
         val deviceSelector = DeviceSelector.fromSerialNumber(fakeDevice.deviceId)
-        val input = """
-            stdout: This is some text with
-            stdout: split in multiple lines
-            stderr: and containing non-ascii
-            stdout: characters such as
-            stderr: - ඒ (SINHALA LETTER EEYANNA (U+0D92))
-            stdout: - ⿉ (KANGXI RADICAL MILLET (U+2FC9))
-            exit: 10
-        """.trimIndent()
 
-        // Act
-        val collectedStdout = ArrayList<String>()
-        val collectedStderr = ArrayList<String>()
-        var collectedExitCode = -1
+        // Act: We disconnect the device while waiting on a "echo" command that will
+        // never produce any output.
+        val input = deviceServices.session.channelFactory.createPipedChannel()
+        // Note: In theory, we should get an EOFException here, but on Windows we (sometimes)
+        // get a "java.io.IOException: The specified network name is no longer available", which
+        // corresponds to Win32 error code 64 ("ERROR_NETNAME_DELETED"). This is due do the
+        // fact adblib uses async. socket channel API, which sometimes lead to this behavior
+        // when a socket is closed while a async i/o operation is pending.
+        exceptionRule.expect(IOException::class.java)
         deviceServices.shellCommand(deviceSelector, "shell-protocol-echo")
-            .withStdin(input.asAdbInputChannel(deviceServices.session))
+            .withStdin(input)
             .withInputChannelCollector()
-            .executeAsSingleOutput()
-            .use { firstCollecting ->
-                val inputChannelOutput = firstCollecting.value()
+            .executeAsSingleOutput { inputChannelOutput ->
+                // A device disconnect should result in an `EOFException` for the shell service.
+                fakeAdb.disconnectDevice(fakeDevice.deviceId)
 
-                // The first element we collect is the only one.
-                // We read data from stdin and stdout input channels until EOF
-                // Then we get the exitCode
-                val job1 = launchCancellable {
-                    AdbInputChannelReader(inputChannelOutput.stdout).use { reader ->
-                        while (true) {
-                            val line = reader.readLine() ?: break
-                            collectedStdout.add(line)
-                        }
-                    }
-                }
-
-                val job2 = launchCancellable {
-                    AdbInputChannelReader(inputChannelOutput.stderr).use { reader ->
-                        while (true) {
-                            val line = reader.readLine() ?: break
-                            collectedStderr.add(line)
-                        }
-                    }
-                }
-
-                joinAll(job1, job2)
-                collectedExitCode = inputChannelOutput.exitCode.filterNotNull().first()
+                // Wait forever: the "echo" does not terminate on its own since we
+                // don't send it an "exit:" command
+                inputChannelOutput.exitCode.first { it != null }
             }
 
         // Assert
-        val expectedStdout = """
-            This is some text with
-            split in multiple lines
-            characters such as
-            - ⿉ (KANGXI RADICAL MILLET (U+2FC9))
-        """.trimIndent()
-
-        val expectedStderr = """
-            and containing non-ascii
-            - ඒ (SINHALA LETTER EEYANNA (U+0D92))
-        """.trimIndent()
-
-        Assert.assertEquals(expectedStdout, collectedStdout.joinToString(separator = "\n"))
-        Assert.assertEquals(expectedStderr, collectedStderr.joinToString(separator = "\n"))
-        Assert.assertEquals(10, collectedExitCode)
+        Assert.fail("Should not reach")
     }
 
     @Test
@@ -1031,13 +996,12 @@ class AdbDeviceServicesTest {
 
         // Act
         exceptionRule.expect(Exception::class.java)
-        exceptionRule.expectMessage("My Message")
         val collectedStdout = ArrayList<String>()
         val collectedStderr = ArrayList<String>()
         deviceServices.shellCommand(deviceSelector, "shell-protocol-echo")
             .withStdin(input.asAdbInputChannel(deviceServices.session))
             .withInputChannelCollector()
-            .executeAsSingleOutput<Int> { inputChannelOutput ->
+            .executeAsSingleOutput<Unit> { inputChannelOutput ->
                 // The first element we collect is the only one.
                 // We read data from stdin and stdout input channels until EOF
                 // Then we get the exitCode
@@ -1058,7 +1022,7 @@ class AdbDeviceServicesTest {
                         }
                     }
                 }
-                throw Exception("My Message")
+                throw RuntimeException("My Message")
             }
 
         // Assert
@@ -1151,8 +1115,7 @@ class AdbDeviceServicesTest {
         """.trimIndent()
 
         // Act
-        exceptionRule.expect(CancellationException::class.java)
-        exceptionRule.expectMessage("My Message")
+        exceptionRule.expect(Exception::class.java)
         val collectedStdout = ArrayList<String>()
         val collectedStderr = ArrayList<String>()
         coroutineScope {
@@ -1193,17 +1156,17 @@ class AdbDeviceServicesTest {
         // Prepare
         val fakeDevice = addFakeDevice(fakeAdb)
         val deviceSelector = DeviceSelector.fromSerialNumber(fakeDevice.deviceId)
-        val input = """
-            stdout: This is some text with
-            exit: 10
-        """.trimIndent()
+        val input = deviceServices.session.channelFactory.createPipedChannel()
 
         // Act
-        exceptionRule.expect(CancellationException::class.java)
-        exceptionRule.expectMessage("My Message")
+        // Note: We can't assert on the exception type or message, because the exception thrown
+        // maybe be the one explicitly thrown in the reader coroutine, or the cancellation
+        // exception result from closing the socket channel.
+        exceptionRule.expect(Exception::class.java)
+        //exceptionRule.expectMessage("My Message")
         coroutineScope {
             deviceServices.shellCommand(deviceSelector, "shell-protocol-echo")
-                .withStdin(input.asAdbInputChannel(deviceServices.session))
+                .withStdin(input)
                 .withInputChannelCollector()
                 .executeAsSingleOutput { inputChannelOutput ->
                     // The first element we collect is the only one.
@@ -1219,6 +1182,7 @@ class AdbDeviceServicesTest {
                         AdbInputChannelReader(inputChannelOutput.stderr).use {
                         }
                     }
+                    delay(1_000)
                 }
         }
 
@@ -1238,8 +1202,11 @@ class AdbDeviceServicesTest {
         """.trimIndent()
 
         // Act
-        exceptionRule.expect(CancellationException::class.java)
-        exceptionRule.expectMessage("My Message")
+        // Note: We can't assert on the exception type or message, because the exception thrown
+        // maybe be the one explicitly thrown in the reader coroutine, or the cancellation
+        // exception result from closing the socket channel.
+        exceptionRule.expect(Exception::class.java)
+        //exceptionRule.expectMessage("My Message")
         coroutineScope {
             deviceServices.shellCommand(deviceSelector, "shell-protocol-echo")
                 .withStdin(input.asAdbInputChannel(deviceServices.session))
@@ -1255,6 +1222,7 @@ class AdbDeviceServicesTest {
                             throw CancellationException("My Message")
                         }
                     }
+                    delay(1_000)
                 }
         }
 

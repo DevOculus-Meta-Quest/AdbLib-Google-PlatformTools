@@ -18,12 +18,9 @@ package com.android.adblib
 import com.android.adblib.impl.InputChannelShellOutputImpl
 import com.android.adblib.impl.LineCollector
 import com.android.adblib.utils.AdbBufferDecoder
-import com.android.adblib.utils.FirstCollecting
-import com.android.adblib.utils.firstCollecting
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.FlowCollector
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.first
 import java.nio.ByteBuffer
 import java.nio.CharBuffer
 import java.time.Duration
@@ -146,32 +143,11 @@ interface ShellCommand<T> {
     /**
      * Execute the shell command on the device, assuming there is a single output
      * emitted by [ShellCommand.withCollector]. The single output is passed as
-     * an argument to [block].
-     *
-     * Note: Unlike [execute].[first()][Flow.first], which terminates the shell command
-     *  when returning the single output of the command, the shell command is still active
-     *  when [block] is called.
+     * an argument to [block] **while the shell command is still active**.
      *
      * Note: This operator is reserved for [ShellV2Collector] that collect a single value.
-     *
-     * @see [Flow.firstCollecting]
      */
-    suspend fun <R> executeAsSingleOutput(block: suspend (T) -> R): R {
-        return execute().firstCollecting(session.scope, block)
-    }
-
-    /**
-     * Execute the shell command on the device, and returns a [ShellSingleOutput] instance
-     * that gives access to the single output of the command. The shell command is active
-     * until [ShellSingleOutput.close] is called.
-     *
-     * Note: This operator is reserved for [ShellV2Collector] that collect a single value.
-     *
-     * @see [Flow.firstCollecting]
-     */
-    suspend fun executeAsSingleOutput(): ShellSingleOutput<T> {
-        return ShellSingleOutput(execute().firstCollecting(session.scope))
-    }
+    suspend fun <R> executeAsSingleOutput(block: suspend (T) -> R): R
 
     /**
      * The protocol used for [executing][execute] a [ShellCommand]
@@ -183,16 +159,6 @@ interface ShellCommand<T> {
         EXEC
     }
 }
-
-/**
- * Provides access to the [single output][value] of a shell command.
- *
- * @see ShellCommand.executeAsSingleOutput
- */
-class ShellSingleOutput<out T>(
-    firstCollecting: FirstCollecting<T>
-) : FirstCollecting<T> by firstCollecting
-
 
 fun <T> ShellCommand<T>.withLineCollector(): ShellCommand<ShellCommandOutputElement> {
     return this.withCollector(LineShellV2Collector())
@@ -216,7 +182,8 @@ fun <T> ShellCommand<T>.withInputChannelCollector(): ShellCommand<InputChannelSh
  * Note: This should be used only if the output of a shell command is expected to be somewhat
  *       small and can easily fit into memory.
  */
-class TextShellCollector(bufferCapacity: Int = 256) : ShellCollector<String> {
+class TextShellCollector(bufferCapacity: Int = 256)
+    : ShellCollector<String>, ShellCollectorCapabilities {
 
     private val decoder = AdbBufferDecoder(bufferCapacity)
 
@@ -230,6 +197,12 @@ class TextShellCollector(bufferCapacity: Int = 256) : ShellCollector<String> {
      * invocation of [AdbBufferDecoder.decodeBuffer]
      */
     private val characterCollector = this::collectCharacters
+
+    /**
+     * See [ShellCollectorCapabilities.isSingleOutput]
+     */
+    override val isSingleOutput: Boolean
+        get() = true
 
     override suspend fun start(collector: FlowCollector<String>) {
         // Nothing to do
@@ -255,12 +228,19 @@ class TextShellCollector(bufferCapacity: Int = 256) : ShellCollector<String> {
  * Note: This should be used only if the output of a shell command is expected to be somewhat
  *       small and can easily fit into memory.
  */
-class TextShellV2Collector(bufferCapacity: Int = 256) : ShellV2Collector<ShellCommandOutput> {
+class TextShellV2Collector(bufferCapacity: Int = 256)
+    : ShellV2Collector<ShellCommandOutput>, ShellCollectorCapabilities {
 
     private val stdoutCollector = TextShellCollector(bufferCapacity)
     private val stderrCollector = TextShellCollector(bufferCapacity)
     private val stdoutFlowCollector = StringFlowCollector()
     private val stderrFlowCollector = StringFlowCollector()
+
+    /**
+     * See [ShellCollectorCapabilities.isSingleOutput]
+     */
+    override val isSingleOutput: Boolean
+        get() = true
 
     override suspend fun start(collector: FlowCollector<ShellCommandOutput>) {
         stdoutCollector.start(stdoutFlowCollector)
@@ -603,11 +583,17 @@ sealed class BatchShellCommandOutputElement {
 class InputChannelShellCollector(
     session: AdbSession,
     bufferSize: Int = DEFAULT_BUFFER_SIZE
-) : ShellV2Collector<InputChannelShellOutput> {
+) : ShellV2Collector<InputChannelShellOutput>, ShellCollectorCapabilities {
 
     private val logger = thisLogger(session)
 
     private val shellOutput = InputChannelShellOutputImpl(session, bufferSize)
+
+    /**
+     * See [ShellCollectorCapabilities.isSingleOutput]
+     */
+    override val isSingleOutput: Boolean
+        get() = true
 
     override suspend fun start(collector: FlowCollector<InputChannelShellOutput>) {
         collector.emit(shellOutput)

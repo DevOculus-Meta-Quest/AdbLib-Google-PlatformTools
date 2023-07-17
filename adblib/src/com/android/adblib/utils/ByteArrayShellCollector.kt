@@ -16,6 +16,7 @@
 package com.android.adblib.utils
 
 import com.android.adblib.ShellCollector
+import com.android.adblib.ShellCollectorCapabilities
 import com.android.adblib.ShellV2Collector
 import com.android.adblib.utils.ByteArrayShellCollector.CommandResult
 import kotlinx.coroutines.flow.FlowCollector
@@ -28,11 +29,17 @@ import java.nio.ByteBuffer
  * Note: This should be used only if the output of a shell command is expected to be somewhat
  *       small and can easily fit into memory.
  */
-class ByteArrayShellCollector : ShellV2Collector<CommandResult> {
+class ByteArrayShellCollector : ShellV2Collector<CommandResult>, ShellCollectorCapabilities {
     private val decoder = AdbBufferDecoder()
 
     private val stdoutBuffer = ResizableBuffer()
     private val stderrText = StringBuilder()
+
+    /**
+     * See [ShellCollectorCapabilities.isSingleOutput]
+     */
+    override val isSingleOutput: Boolean
+        get() = true
 
     override suspend fun start(collector: FlowCollector<CommandResult>) {}
 

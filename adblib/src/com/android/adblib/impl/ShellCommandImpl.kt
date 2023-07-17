@@ -24,6 +24,7 @@ import com.android.adblib.INFINITE_DURATION
 import com.android.adblib.ShellCommand
 import com.android.adblib.ShellCommand.Protocol
 import com.android.adblib.ShellCollector
+import com.android.adblib.ShellCollectorCapabilities
 import com.android.adblib.ShellV2Collector
 import com.android.adblib.availableFeatures
 import com.android.adblib.deviceProperties
@@ -32,8 +33,9 @@ import com.android.adblib.thisLogger
 import com.android.adblib.utils.SuspendingLazy
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.FlowCollector
-import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
 import java.nio.ByteBuffer
 import java.time.Duration
 
@@ -121,6 +123,20 @@ internal class ShellCommandImpl<T>(
         shellFlow().collect {
             emit(it)
         }
+    }
+
+    override suspend fun <R> executeAsSingleOutput(block: suspend (T) -> R): R {
+        val collector = collector ?: throw IllegalArgumentException("Shell Collector is not set")
+        require(collector.isSingleOutputCollector) {
+            "Shell Collector '$collector' is not a single output collector"
+        }
+        return execute().map { singleOutput ->
+            try {
+                block(singleOutput)
+            } finally {
+                (singleOutput as? AutoCloseable)?.close()
+            }
+        }.first()
     }
 
     private suspend fun shellFlow(): Flow<T> {
@@ -255,9 +271,17 @@ internal class ShellCommandImpl<T>(
         }
     }
 
+    private val <T> ShellV2Collector<T>.isSingleOutputCollector: Boolean
+        get() {
+            return (this as? ShellCollectorCapabilities)?.isSingleOutput ?: false
+        }
+
     class LegacyShellToShellV2Collector<T>(
         internal val legacyShellCollector: ShellCollector<T>
-    ) : ShellV2Collector<T> {
+    ) : ShellV2Collector<T>, ShellCollectorCapabilities {
+
+        override val isSingleOutput: Boolean
+            get() = (legacyShellCollector as? ShellCollectorCapabilities)?.isSingleOutput ?: false
 
         override suspend fun start(collector: FlowCollector<T>) {
             legacyShellCollector.start(collector)
@@ -274,11 +298,15 @@ internal class ShellCommandImpl<T>(
         override suspend fun end(collector: FlowCollector<T>, exitCode: Int) {
             legacyShellCollector.end(collector)
         }
+
     }
 
     class ShellV2ToLegacyCollector<T>(
         internal val shellV2Collector: ShellV2Collector<T>
-    ) : ShellCollector<T> {
+    ) : ShellCollector<T>, ShellCollectorCapabilities {
+
+        override val isSingleOutput: Boolean
+            get() = (shellV2Collector as? ShellCollectorCapabilities)?.isSingleOutput ?: false
 
         override suspend fun start(collector: FlowCollector<T>) {
             shellV2Collector.start(collector)
