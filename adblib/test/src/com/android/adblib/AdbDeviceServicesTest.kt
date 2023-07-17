@@ -947,7 +947,6 @@ class AdbDeviceServicesTest {
         Assert.assertEquals(10, collectedExitCode)
     }
 
-    @Ignore("Ignore until we FakeAdb has support for disconnecting devices")
     @Test
     fun testShellCommandExecuteSingleOutputIsTransparentToShellExceptions(): Unit = runBlockingWithTimeout {
         // Prepare
