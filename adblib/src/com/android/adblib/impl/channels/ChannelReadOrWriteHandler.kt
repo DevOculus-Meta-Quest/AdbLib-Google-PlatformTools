@@ -23,11 +23,13 @@ import com.android.adblib.thisLogger
 import kotlinx.coroutines.CancellableContinuation
 import java.io.EOFException
 import java.nio.ByteBuffer
+import java.nio.channels.AsynchronousCloseException
 import java.nio.channels.AsynchronousFileChannel
 import java.nio.channels.AsynchronousSocketChannel
 import java.nio.channels.Channel
 import java.nio.channels.CompletionHandler
 import java.util.concurrent.TimeUnit
+import kotlin.coroutines.cancellation.CancellationException
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
@@ -55,6 +57,54 @@ internal abstract class ChannelReadOrWriteHandler protected constructor(
     private val completionHandler = object : ContinuationCompletionHandler<Int>() {
         override fun completed(result: Int, continuation: CancellableContinuation<Int>) {
             completionHandlerCompleted(result, continuation)
+        }
+
+        /**
+         * Convert [AsynchronousCloseException] to [CancellationException]
+         *
+         * Note:
+         * [AsynchronousCloseException] is thrown when an async socket is closed during
+         * a pending async read or write operation. This function wraps these exceptions as
+         * [CancellationException] to play "nicely" with coroutine cancellation processing.
+         *
+         * For example
+         *
+         *     suspend fun myFun(x : AdbInputChannel) {
+         *         coroutineScope {
+         *             launch {
+         *                 x.read(buffer)
+         *             }
+         *             throw CancellationException("Foo")
+         *         }
+         *     }
+         *
+         * In the code above, the `throw CancellationException("Foo")` statement
+         * * cancels the current scope,
+         * * which results in cancelling the `async` block, because it is a child scope,
+         * * which results in closing the `x` socket channel, because async socket operations
+         *   close the socket when a pending I/O operation is cancelled,
+         * * which results in the pending `read` operation failing,
+         * * which results with an [AsynchronousCloseException] being sent to the
+         *   async. read "completed" callback (i.e. this callback).
+         * * which is caught by the `async` operation
+         *
+         * If we don't convert the [AsynchronousCloseException] into a [CancellationException],
+         * the `async` block throws a non-cancellation exception ([AsynchronousCloseException]),
+         * which may end up taking precedence over the initial [CancellationException] because
+         * the behavior is more or less undefined when a non cancellation exception is thrown
+         * in a scope already in the process of being cancelled.
+         *
+         * By wrapping the [AsynchronousCloseException] into a [CancellationException], the
+         * `async` block throws a cancellation exception that is ignored because the parent
+         * scope is already being cancelled (i.e. the coroutine runtime behavior seems
+         * to be more deterministic dealing with "cancellation of cancellation").
+         */
+        override fun wrapError(e: Throwable): Throwable {
+            return if (e is AsynchronousCloseException) {
+                CancellationException(e)
+            } else {
+                e
+            }
         }
     }
 

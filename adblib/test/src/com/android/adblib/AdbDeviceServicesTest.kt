@@ -18,6 +18,7 @@ package com.android.adblib
 import com.android.adblib.impl.channels.AdbInputChannelReader
 import com.android.adblib.impl.channels.AdbInputStreamChannel
 import com.android.adblib.impl.channels.AdbOutputStreamChannel
+import com.android.adblib.testingutils.AnyExceptionOfMatcher.Companion.anyExceptionOf
 import com.android.adblib.testingutils.CoroutineTestUtils.runBlockingWithTimeout
 import com.android.adblib.testingutils.CoroutineTestUtils.yieldUntil
 import com.android.adblib.testingutils.FakeAdbServerProvider
@@ -54,14 +55,13 @@ import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert
 import org.junit.BeforeClass
-import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.ExpectedException
 import java.io.ByteArrayOutputStream
-import java.io.EOFException
 import java.io.IOException
 import java.nio.ByteBuffer
+import java.nio.channels.ClosedChannelException
 import java.nio.file.attribute.FileTime
 import java.nio.file.attribute.PosixFilePermission.OWNER_READ
 import java.nio.file.attribute.PosixFilePermission.OWNER_WRITE
@@ -994,7 +994,8 @@ class AdbDeviceServicesTest {
         """.trimIndent()
 
         // Act
-        exceptionRule.expect(Exception::class.java)
+        exceptionRule.expect(RuntimeException::class.java)
+        exceptionRule.expectMessage("My Message")
         val collectedStdout = ArrayList<String>()
         val collectedStderr = ArrayList<String>()
         deviceServices.shellCommand(deviceSelector, "shell-protocol-echo")
@@ -1114,7 +1115,8 @@ class AdbDeviceServicesTest {
         """.trimIndent()
 
         // Act
-        exceptionRule.expect(Exception::class.java)
+        exceptionRule.expect(CancellationException::class.java)
+        exceptionRule.expectMessage("My Message")
         val collectedStdout = ArrayList<String>()
         val collectedStderr = ArrayList<String>()
         coroutineScope {
@@ -1155,17 +1157,27 @@ class AdbDeviceServicesTest {
         // Prepare
         val fakeDevice = addFakeDevice(fakeAdb)
         val deviceSelector = DeviceSelector.fromSerialNumber(fakeDevice.deviceId)
-        val input = deviceServices.session.channelFactory.createPipedChannel()
+        val input = """
+            stdout: This is some text with
+            stdout: split in multiple lines
+            stderr: and containing non-ascii
+            stdout: characters such as
+            stderr: - ඒ (SINHALA LETTER EEYANNA (U+0D92))
+            stdout: - ⿉ (KANGXI RADICAL MILLET (U+2FC9))
+            exit: 10
+        """.trimIndent()
 
         // Act
-        // Note: We can't assert on the exception type or message, because the exception thrown
-        // maybe be the one explicitly thrown in the reader coroutine, or the cancellation
-        // exception result from closing the socket channel.
-        exceptionRule.expect(Exception::class.java)
-        //exceptionRule.expectMessage("My Message")
+        // Note: 99% of the time, we get an [MyCancellationException], but we sometimes
+        // get a [ClosedChannelException] coming from the cancellation of the underlying
+        // [AdbPipedInputChannelImpl] used by the [InputChannelCollector] to forward
+        // stdout and stderr. It is unclear why we get this exception when the cause
+        // of cancellation is always [MyCancellationException].
+        exceptionRule.expect(anyExceptionOf(MyCancellationException::class.java,
+                                            ClosedChannelException::class.java))
         coroutineScope {
             deviceServices.shellCommand(deviceSelector, "shell-protocol-echo")
-                .withStdin(input)
+                .withStdin(input.asAdbInputChannel(deviceServices.session))
                 .withInputChannelCollector()
                 .executeAsSingleOutput { inputChannelOutput ->
                     // The first element we collect is the only one.
@@ -1173,7 +1185,7 @@ class AdbDeviceServicesTest {
                     // Then we get the exitCode
                     launchCancellable {
                         AdbInputChannelReader(inputChannelOutput.stdout).use {
-                            throw CancellationException("My Message")
+                            throw MyCancellationException("My Message")
                         }
                     }
 
@@ -1201,11 +1213,13 @@ class AdbDeviceServicesTest {
         """.trimIndent()
 
         // Act
-        // Note: We can't assert on the exception type or message, because the exception thrown
-        // maybe be the one explicitly thrown in the reader coroutine, or the cancellation
-        // exception result from closing the socket channel.
-        exceptionRule.expect(Exception::class.java)
-        //exceptionRule.expectMessage("My Message")
+        // Note: 99% of the time, we get an [MyCancellationException], but we sometimes
+        // get a [ClosedChannelException] coming from the cancellation of the underlying
+        // [AdbPipedInputChannelImpl] used by the [InputChannelCollector] to forward
+        // stdout and stderr. It is unclear why we get this exception when the cause
+        // of cancellation is always [MyCancellationException].
+        exceptionRule.expect(anyExceptionOf(MyCancellationException::class.java,
+                                            ClosedChannelException::class.java))
         coroutineScope {
             deviceServices.shellCommand(deviceSelector, "shell-protocol-echo")
                 .withStdin(input.asAdbInputChannel(deviceServices.session))
@@ -1218,7 +1232,7 @@ class AdbDeviceServicesTest {
 
                     launchCancellable {
                         AdbInputChannelReader(inputChannelOutput.stderr).use {
-                            throw CancellationException("My Message")
+                            throw MyCancellationException("My Message")
                         }
                     }
                     delay(1_000)
@@ -2510,6 +2524,8 @@ class AdbDeviceServicesTest {
     )
 
     class MyTestException(message: String) : IOException(message)
+
+    class MyCancellationException(message: String): CancellationException(message)
 
     companion object {
 

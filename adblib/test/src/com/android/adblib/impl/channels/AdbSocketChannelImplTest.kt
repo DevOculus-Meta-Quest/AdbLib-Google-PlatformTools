@@ -16,19 +16,27 @@
 package com.android.adblib.impl.channels
 
 import com.android.adblib.testingutils.CloseablesRule
+import com.android.adblib.testingutils.CoroutineTestUtils.runBlockingWithTimeout
 import com.android.adblib.testingutils.FakeAdbServerProvider
 import com.android.adblib.testingutils.TestingAdbSessionHost
 import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import org.junit.Assert
 import org.junit.Rule
 import org.junit.Test
+import org.junit.rules.ExpectedException
 import java.nio.ByteBuffer
 import java.nio.channels.AsynchronousSocketChannel
 import java.util.concurrent.TimeUnit
+import kotlin.coroutines.cancellation.CancellationException
 
 class AdbSocketChannelImplTest {
+
     @JvmField
     @Rule
     val closeables = CloseablesRule()
@@ -36,6 +44,10 @@ class AdbSocketChannelImplTest {
     private fun <T : AutoCloseable> registerCloseable(item: T): T {
         return closeables.register(item)
     }
+
+    @JvmField
+    @Rule
+    var exceptionRule: ExpectedException = ExpectedException.none()
 
     @Test
     fun coroutineCancellationClosesSocketChannel() {
@@ -82,5 +94,56 @@ class AdbSocketChannelImplTest {
         // i.e. that all asynchronous socket channel operations have been terminated and the
         // implementation does not leak those operations.
         Assert.assertFalse(channel.isOpen)
+    }
+
+    @Test
+    fun childCoroutineCancellationIsObservableFromParentScope(): Unit = runBlockingWithTimeout {
+        // Prepare
+        // Note: We don't really need fake adb for this test, we just need a socket server that
+        // does nothing, but we get that for free with fake adb.
+        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
+        val host = registerCloseable(TestingAdbSessionHost())
+        val socketChannel = AsynchronousSocketChannel.open(host.asynchronousChannelGroup)
+        val channel = AdbSocketChannelImpl(host, socketChannel)
+
+        // Act
+        exceptionRule.expect(CancellationException::class.java)
+        exceptionRule.expectMessage("My Message")
+        channel.connect(fakeAdb.socketAddress, 10_000, TimeUnit.MILLISECONDS)
+        coroutineScope {
+            val job1 = async {
+                throw CancellationException("My Message")
+            }
+            val job2 = async {
+                // Ensure there is (forever) pending read
+                val buffer = ByteBuffer.allocate(100)
+                channel.read(buffer)
+            }
+            awaitAll(job1, job2)
+        }
+    }
+
+    @Test
+    fun coroutineCancellationIsObservableFromParentScope(): Unit = runBlockingWithTimeout {
+        // Prepare
+        // Note: We don't really need fake adb for this test, we just need a socket server that
+        // does nothing, but we get that for free with fake adb.
+        val fakeAdb = registerCloseable(FakeAdbServerProvider().buildDefault().start())
+        val host = registerCloseable(TestingAdbSessionHost())
+        val socketChannel = AsynchronousSocketChannel.open(host.asynchronousChannelGroup)
+        val channel = AdbSocketChannelImpl(host, socketChannel)
+
+        // Act
+        exceptionRule.expect(CancellationException::class.java)
+        exceptionRule.expectMessage("My Message")
+        channel.connect(fakeAdb.socketAddress, 10_000, TimeUnit.MILLISECONDS)
+        coroutineScope {
+            launch {
+                // Ensure there is (forever) pending read
+                val buffer = ByteBuffer.allocate(100)
+                channel.read(buffer)
+            }
+            throw CancellationException("My Message")
+        }
     }
 }
