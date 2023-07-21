@@ -30,6 +30,7 @@ import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeout
@@ -640,6 +641,38 @@ class AdbSessionTest {
 
         // Assert
         Assert.assertFalse(deviceCoroutineIsRunning)
+    }
+
+    @Test
+    fun testChildSessionWorks(): Unit = runBlockingWithTimeout {
+        // Prepare
+        val childSession = AdbSession.createChildSession(session,
+                                                         session.host,
+                                                         fakeAdbRule.createChannelProvider())
+
+        // Act
+        val version = childSession.hostServices.version()
+
+        // Assert
+        Assert.assertEquals(40, version)
+    }
+
+    @Test
+    fun testChildSessionScopeIsCancelledWhenParentSessionIsClosed(): Unit = runBlockingWithTimeout {
+        // Prepare
+        val childSession = AdbSession.createChildSession(session,
+                                                         session.host,
+                                                         fakeAdbRule.createChannelProvider())
+
+        // Act
+        val job = childSession.scope.launch {
+            delay(10_000)
+        }
+        session.close()
+        job.join()
+
+        // Assert
+        Assert.assertFalse(childSession.scope.isActive)
     }
 
     class MyTestException(message: String) : IOException(message)

@@ -26,6 +26,9 @@ import kotlinx.coroutines.CoroutineScope
 
 class TestingAdbSession : AdbSession {
 
+    override val parentSession: AdbSession?
+        get() = null
+
     override val host: AdbSessionHost = TestingAdbSessionHost()
 
     override val channelFactory: AdbChannelFactory = AdbChannelFactoryImpl(this)

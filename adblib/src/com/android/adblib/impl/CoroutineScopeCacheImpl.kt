@@ -18,9 +18,9 @@ package com.android.adblib.impl
 import com.android.adblib.CoroutineScopeCache
 import com.android.adblib.CoroutineScopeCache.Key
 import com.android.adblib.utils.SuppressedExceptions
+import com.android.adblib.utils.createChildScope
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.job
@@ -32,9 +32,10 @@ internal class CoroutineScopeCacheImpl(
     parentScope: CoroutineScope
 ) : CoroutineScopeCache {
 
-    private val job = SupervisorJob(parentScope.coroutineContext.job)
+    override var scope = parentScope.createChildScope(isSupervisor = true)
 
-    override var scope = CoroutineScope(parentScope.coroutineContext + job)
+    private val job: Job
+        get() = scope.coroutineContext.job
 
     private val valueMap = ValueMap()
 

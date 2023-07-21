@@ -31,6 +31,9 @@ import kotlinx.coroutines.cancel
  */
 class FakeAdbSession : AdbSession {
 
+    override val parentSession: AdbSession?
+        get() = null
+
     override val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     override val cache: CoroutineScopeCache = CoroutineScopeCacheImpl(scope)

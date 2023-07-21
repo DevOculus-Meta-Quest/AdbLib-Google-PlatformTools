@@ -20,6 +20,7 @@ import com.android.adblib.ConnectedDevice
 import com.android.adblib.CoroutineScopeCache
 import com.android.adblib.DeviceInfo
 import com.android.adblib.DeviceState
+import com.android.adblib.deviceInfo
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
@@ -41,6 +42,10 @@ internal class ConnectedDeviceImpl(
         deviceInfoStateFlow.value =
             deviceInfoStateFlow.value.copy(deviceState = DeviceState.OFFLINE)
         cacheImpl.close()
+    }
+
+    override fun toString(): String {
+        return "${this::class.simpleName}(serial=${deviceInfo.serialNumber})"
     }
 
     fun updateDeviceInfo(deviceInfo: DeviceInfo) {

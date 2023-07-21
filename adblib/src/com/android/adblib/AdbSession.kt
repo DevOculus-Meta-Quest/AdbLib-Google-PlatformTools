@@ -50,6 +50,13 @@ import kotlin.coroutines.CoroutineContext
 interface AdbSession : AutoCloseable {
 
     /**
+     * The parent [AdbSession] if this session is a child session, `null` otherwise.
+     * If there is a parent session, [scope] is a guaranteed by be a child [CoroutineScope]
+     * of the parent session scope.
+     */
+    val parentSession: AdbSession?
+
+    /**
      * The [AdbSessionHost] implementation provided by the hosting application for environment
      * specific configuration.
      *
@@ -145,7 +152,32 @@ interface AdbSession : AutoCloseable {
             channelProvider: AdbServerChannelProvider = AdbServerChannelProvider.createOpenLocalHost(host),
             connectionTimeout: Duration = Duration.ofSeconds(30)
         ): AdbSession {
-            return AdbSessionImpl(host, channelProvider, connectionTimeout.toMillis())
+            return AdbSessionImpl(
+                parentSession = null,
+                host,
+                channelProvider,
+                connectionTimeout.toMillis()
+            )
+        }
+
+        /**
+         * Create a child [AdbSession] given its [parent session][parentSession]. The child session
+         * will use a child [CoroutineScope] of the parent session, but can use a distinct
+         * [host] and [channelProvider] if necessary.
+         */
+        @JvmStatic
+        fun createChildSession(
+            parentSession: AdbSession,
+            host: AdbSessionHost,
+            channelProvider: AdbServerChannelProvider = AdbServerChannelProvider.createOpenLocalHost(host),
+            connectionTimeout: Duration = Duration.ofSeconds(30)
+        ): AdbSession {
+            return AdbSessionImpl(
+                parentSession,
+                host,
+                channelProvider,
+                connectionTimeout.toMillis()
+            )
         }
     }
 }

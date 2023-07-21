@@ -43,7 +43,7 @@ open class FakeAdbServerProviderRule(
         host = TestingAdbSessionHost()
         adbSession = AdbSession.create(
             host,
-            fakeAdb.createChannelProvider(host),
+            createChannelProvider(),
             Duration.ofMillis(SOCKET_CONNECT_TIMEOUT_MS),
         )
     }
@@ -52,5 +52,9 @@ open class FakeAdbServerProviderRule(
         adbSession.close()
         host.close()
         fakeAdb.close()
+    }
+
+    fun createChannelProvider(): FakeAdbServerProvider.TestingChannelProvider {
+        return fakeAdb.createChannelProvider(host)
     }
 }
