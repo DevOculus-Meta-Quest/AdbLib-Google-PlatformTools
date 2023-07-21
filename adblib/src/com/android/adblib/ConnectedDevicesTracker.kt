@@ -17,6 +17,9 @@ package com.android.adblib
 
 import com.android.adblib.impl.InactiveCoroutineScopeCache
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.transform
 
 /**
  * Tracks devices that are currently [connected][ConnectedDevice] to the ADB server
@@ -57,6 +60,19 @@ suspend fun ConnectedDevicesTracker.device(selector: DeviceSelector): ConnectedD
 fun ConnectedDevicesTracker.device(serialNumber: String): ConnectedDevice {
     return this.connectedDevices.value.firstOrNull { it.serialNumber == serialNumber }
         ?: throw NoSuchElementException("Device $serialNumber is not currently connected")
+}
+
+/**
+ * Waits for a device with the given [serialNumber] to appear in the list of
+ * [ConnectedDevicesTracker.connectedDevices].
+ */
+suspend fun ConnectedDevicesTracker.waitForDevice(serialNumber: String): ConnectedDevice {
+    // Do a quick scan on the current state first (more efficient), then wait on the StateFlow.
+    return connectedDevices.value.firstOrNull { it.serialNumber == serialNumber } ?: run {
+        connectedDevices.transform { devices ->
+            emit(devices.firstOrNull { device -> device.serialNumber == serialNumber })
+        }.filterNotNull().first()
+    }
 }
 
 /**

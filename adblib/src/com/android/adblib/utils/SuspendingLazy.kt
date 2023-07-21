@@ -21,7 +21,7 @@ package com.android.adblib.utils
  * Note: The implementation is not thread safe, and [initializer] may be executed
  * multiple times if the first time initialization is executed concurrently.
  */
-internal class SuspendingLazy<T>(private val initializer: suspend () -> T) {
+class SuspendingLazy<T>(private val initializer: suspend () -> T) {
 
     private var _value: T? = null
 
