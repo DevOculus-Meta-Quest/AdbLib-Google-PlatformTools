@@ -30,6 +30,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
 
 internal class AdbSessionImpl(
     override val parentSession: AdbSession?,
@@ -39,6 +40,8 @@ internal class AdbSessionImpl(
 ) : AdbSession {
 
     private val logger = thisLogger(host)
+
+    private val id = sessionId.incrementAndGet()
 
     private var closed = false
 
@@ -96,8 +99,8 @@ internal class AdbSessionImpl(
 
     override fun toString(): String {
         return when(parentSession) {
-            null -> "Root${this::class.simpleName}"
-            else -> "${this::class.simpleName}(parent=$parentSession)"
+            null -> "${AdbSession::class.simpleName}('ROOT')"
+            else -> "${AdbSession::class.simpleName}(id=$id, parent=$parentSession)"
         }
     }
 
@@ -117,5 +120,9 @@ internal class AdbSessionImpl(
             connectionTimeoutMillis,
             TimeUnit.MILLISECONDS
         )
+    }
+
+    companion object {
+        private val sessionId = AtomicInteger(0)
     }
 }

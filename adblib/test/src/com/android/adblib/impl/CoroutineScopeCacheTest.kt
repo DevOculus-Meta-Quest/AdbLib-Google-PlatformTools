@@ -33,6 +33,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 import org.junit.Assert
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.ExpectedException
@@ -354,5 +355,26 @@ class CoroutineScopeCacheTest {
         // Assert
         assertEquals(1, runCount.get())
         assertEquals(1, values.toSet().size)
+    }
+
+    @Test
+    fun test_GetOrPutSynchronized_Supports_AutoCloseable(): Unit = runBlockingWithTimeout {
+        // Prepare
+        val scope = CoroutineScope(SupervisorJob())
+        val cache = registerCloseable(CoroutineScopeCacheImpl(scope))
+        class MyValue : AutoCloseable {
+            var closed = false
+            override fun close() {
+                closed = true
+            }
+        }
+        val key = CoroutineScopeCache.Key<MyValue>("myValue")
+
+        // Act
+        val value = cache.getOrPutSynchronized(key) { MyValue() }
+        cache.close()
+
+        // Assert
+        assertTrue(value.closed)
     }
 }

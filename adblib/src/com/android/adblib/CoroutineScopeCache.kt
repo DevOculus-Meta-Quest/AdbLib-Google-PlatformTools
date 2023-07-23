@@ -137,7 +137,7 @@ fun <T> CoroutineScopeCache.getOrPutSynchronized(
     }.runOnlyOnce(defaultValue)
 }
 
-private class RunOnlyOnce<T> {
+private class RunOnlyOnce<T>: AutoCloseable {
     @Volatile
     private var lazyValue: T? = null
 
@@ -157,5 +157,11 @@ private class RunOnlyOnce<T> {
             }
         }
         return localValue!!
+    }
+
+    override fun close() {
+        synchronized(this) {
+            (lazyValue as? AutoCloseable)?.close()
+        }
     }
 }

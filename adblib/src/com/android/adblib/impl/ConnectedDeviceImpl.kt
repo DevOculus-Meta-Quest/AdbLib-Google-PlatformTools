@@ -45,7 +45,7 @@ internal class ConnectedDeviceImpl(
     }
 
     override fun toString(): String {
-        return "${this::class.simpleName}(serial=${deviceInfo.serialNumber})"
+        return "${ConnectedDevice::class.simpleName}(serial='${deviceInfo.serialNumber}')"
     }
 
     fun updateDeviceInfo(deviceInfo: DeviceInfo) {
