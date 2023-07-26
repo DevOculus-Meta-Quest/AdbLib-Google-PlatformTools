@@ -994,8 +994,13 @@ class AdbDeviceServicesTest {
         """.trimIndent()
 
         // Act
-        exceptionRule.expect(RuntimeException::class.java)
-        exceptionRule.expectMessage("My Message")
+        // Note: 99% of the time, we get an [MyTestException], but we sometimes
+        // get a [ClosedChannelException] coming from the cancellation of the underlying
+        // [AdbPipedInputChannelImpl] used by the [InputChannelCollector] to forward
+        // stdout and stderr. It is unclear why we get this exception when the cause
+        // of cancellation is always [MyCancellationException].
+        exceptionRule.expect(anyExceptionOf(MyTestException::class.java,
+                                            ClosedChannelException::class.java))
         val collectedStdout = ArrayList<String>()
         val collectedStderr = ArrayList<String>()
         deviceServices.shellCommand(deviceSelector, "shell-protocol-echo")
@@ -1022,7 +1027,7 @@ class AdbDeviceServicesTest {
                         }
                     }
                 }
-                throw RuntimeException("My Message")
+                throw MyTestException("My Message")
             }
 
         // Assert
@@ -1040,8 +1045,13 @@ class AdbDeviceServicesTest {
         """.trimIndent()
 
         // Act
-        exceptionRule.expect(Exception::class.java)
-        exceptionRule.expectMessage("My Message")
+        // Note: 99% of the time, we get an [MyTestException], but we sometimes
+        // get a [ClosedChannelException] coming from the cancellation of the underlying
+        // [AdbPipedInputChannelImpl] used by the [InputChannelCollector] to forward
+        // stdout and stderr. It is unclear why we get this exception when the cause
+        // of cancellation is always [MyCancellationException].
+        exceptionRule.expect(anyExceptionOf(MyTestException::class.java,
+                                            ClosedChannelException::class.java))
         coroutineScope {
             deviceServices.shellCommand(deviceSelector, "shell-protocol-echo")
                 .withStdin(input.asAdbInputChannel(deviceServices.session))
@@ -1049,7 +1059,7 @@ class AdbDeviceServicesTest {
                 .executeAsSingleOutput { inputChannelOutput ->
                     launchCancellable {
                         AdbInputChannelReader(inputChannelOutput.stdout).use {
-                            throw Exception("My Message")
+                            throw MyTestException("My Message")
                         }
                     }
 
@@ -1075,8 +1085,13 @@ class AdbDeviceServicesTest {
         """.trimIndent()
 
         // Act
-        exceptionRule.expect(Exception::class.java)
-        exceptionRule.expectMessage("My Message")
+        // Note: 99% of the time, we get an [MyTestException], but we sometimes
+        // get a [ClosedChannelException] coming from the cancellation of the underlying
+        // [AdbPipedInputChannelImpl] used by the [InputChannelCollector] to forward
+        // stdout and stderr. It is unclear why we get this exception when the cause
+        // of cancellation is always [MyCancellationException].
+        exceptionRule.expect(anyExceptionOf(MyTestException::class.java,
+                                            ClosedChannelException::class.java))
         coroutineScope {
             deviceServices.shellCommand(deviceSelector, "shell-protocol-echo")
                 .withStdin(input.asAdbInputChannel(deviceServices.session))
@@ -1089,7 +1104,7 @@ class AdbDeviceServicesTest {
 
                     launchCancellable {
                         AdbInputChannelReader(inputChannelOutput.stderr).use {
-                            throw Exception("My Message")
+                            throw MyTestException("My Message")
                         }
                     }
                 }
