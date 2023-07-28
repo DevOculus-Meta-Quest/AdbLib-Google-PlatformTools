@@ -86,6 +86,12 @@ val ConnectedDevice.isOnline: Boolean
     get() = deviceInfoFlow.value.deviceState == DeviceState.ONLINE
 
 /**
+ * Whether the device is [DeviceState.OFFLINE].
+ */
+val ConnectedDevice.isOffline: Boolean
+    get() = deviceInfoFlow.value.deviceState == DeviceState.OFFLINE
+
+/**
  * The current (or last known) [DeviceInfo] for this [ConnectedDevice].
  */
 val ConnectedDevice.deviceInfo: DeviceInfo
