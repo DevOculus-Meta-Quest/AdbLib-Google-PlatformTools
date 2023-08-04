@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.Flow
  * as needed, as well as ensuring resources are released when coroutines complete or
  * are cancelled.
  */
+@IsThreadSafe
 interface AdbHostServices {
 
     /**

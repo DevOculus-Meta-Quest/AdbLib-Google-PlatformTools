@@ -35,6 +35,7 @@ import java.time.Duration
  *
  * @see [AdbSession.connectedDevicesTracker]
  */
+@IsThreadSafe
 interface ConnectedDevice {
 
     /**

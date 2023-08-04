@@ -34,6 +34,7 @@ import java.util.concurrent.TimeUnit
 /**
  * Factory class for various implementations of [AdbInputChannel] and [AdbOutputChannel]
  */
+@IsThreadSafe
 interface AdbChannelFactory {
 
     /**

@@ -3,6 +3,7 @@ package com.android.adblib
 /**
  * A general purpose "Logger" abstraction used throughout adblib.
  */
+@IsThreadSafe
 abstract class AdbLogger {
 
     /**

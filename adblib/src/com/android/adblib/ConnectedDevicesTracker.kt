@@ -25,6 +25,7 @@ import kotlinx.coroutines.flow.transform
  * Tracks devices that are currently [connected][ConnectedDevice] to the ADB server
  * corresponding to a given [session].
  */
+@IsThreadSafe
 interface ConnectedDevicesTracker {
 
     /**

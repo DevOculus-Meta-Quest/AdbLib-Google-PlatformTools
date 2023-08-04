@@ -20,6 +20,7 @@ private const val DEFAULT_ADB_HOST_PORT = 5037
  *
  * See the Companion object for getting access to the commonly used implementations.
  */
+@IsThreadSafe
 interface AdbServerChannelProvider {
 
     /**

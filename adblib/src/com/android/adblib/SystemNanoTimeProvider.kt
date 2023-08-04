@@ -25,6 +25,7 @@ val INFINITE_DURATION: Duration = Duration.ofSeconds(
  */
 const val INFINITE_TIMEOUT = Long.MAX_VALUE
 
+@IsThreadSafe
 abstract class SystemNanoTimeProvider {
 
     /**

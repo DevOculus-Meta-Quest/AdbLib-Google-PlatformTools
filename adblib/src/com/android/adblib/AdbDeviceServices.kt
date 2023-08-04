@@ -19,6 +19,7 @@ const val DEFAULT_SHELL_BUFFER_SIZE = DEFAULT_BUFFER_SIZE
 /**
  * Exposes services that are executed by the ADB daemon of a given device
  */
+@IsThreadSafe
 interface AdbDeviceServices {
 
     /**

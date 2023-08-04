@@ -47,6 +47,7 @@ import kotlin.coroutines.CoroutineContext
  *
  * This is the main entry point of `adblib`, use the [create] method to create an instance.
  */
+@IsThreadSafe
 interface AdbSession : AutoCloseable {
 
     /**

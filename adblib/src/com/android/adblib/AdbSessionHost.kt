@@ -35,6 +35,7 @@ import kotlin.coroutines.EmptyCoroutineContext
  * The host of a single ADB instance. Calling the [.close] method on the host
  * should release all resources acquired for running the corresponding ADB instance.
  */
+@IsThreadSafe
 open class AdbSessionHost : AutoCloseable {
 
     private val loggingFilter = OnlyOnceFilter<Property<*>>()
