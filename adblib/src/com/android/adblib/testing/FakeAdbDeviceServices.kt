@@ -176,6 +176,10 @@ class FakeAdbDeviceServices(override val session: AdbSession) : AdbDeviceService
         return shell(device, command, shellCollector, stdinChannel, commandTimeout, bufferSize, shutdownOutput)
     }
 
+    override suspend fun rawExec(device: DeviceSelector, command: String): AdbChannel {
+        TODO("Not yet implemented")
+    }
+
     override fun <T> shellV2(
         device: DeviceSelector,
         command: String,

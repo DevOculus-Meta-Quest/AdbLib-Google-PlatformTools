@@ -132,6 +132,13 @@ interface AdbDeviceServices {
     ): Flow<T>
 
     /**
+     * Returns an [AdbChannel] ready for communication after invoking [command] on the [device].
+     *
+     * Note that the caller is responsible for calling `AdbChannel.close()` to close the channel.
+     */
+    suspend fun rawExec(device: DeviceSelector, command: String): AdbChannel
+
+    /**
      * ## Note
      *
      * __It is strongly recommended to use [AdbDeviceServices.shellCommand] instead of

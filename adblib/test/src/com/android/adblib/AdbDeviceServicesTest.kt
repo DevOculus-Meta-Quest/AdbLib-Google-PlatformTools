@@ -633,6 +633,38 @@ class AdbDeviceServicesTest {
     }
 
     @Test
+    fun testRawExec(): Unit = runBlockingWithTimeout {
+        // Prepare
+        val device = addFakeDevice(fakeAdb)
+        val deviceSelector = DeviceSelector.fromSerialNumber(device.deviceId)
+
+        // Act
+        deviceServices.rawExec(deviceSelector, "getprop").use {channel ->
+            // Assert
+            Assert.assertNull(deviceSelector.transportId)
+            val expectedOutput = """
+                # This is some build info
+                # This is more build info
+
+                [ro.build.version.release]: [model]
+                [ro.build.version.sdk]: [30]
+                [ro.product.cpu.abi]: [x86_64]
+                [ro.product.manufacturer]: [test1]
+                [ro.product.model]: [test2]
+                [ro.serialno]: [1234]
+
+            """.trimIndent()
+            val adbChannelOutput = ByteBuffer.allocate(1024)
+            channel.read(adbChannelOutput)
+            adbChannelOutput.flip()
+            Assert.assertEquals(
+                expectedOutput,
+                AdbProtocolUtils.ADB_CHARSET.decode(adbChannelOutput).toString()
+            )
+        }
+    }
+
+    @Test
     fun testShellV2Works(): Unit = runBlockingWithTimeout {
         // Prepare
         val device = addFakeDevice(fakeAdb)

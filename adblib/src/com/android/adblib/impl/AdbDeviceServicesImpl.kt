@@ -39,6 +39,7 @@ import com.android.adblib.impl.services.TrackJdwpService
 import com.android.adblib.thisLogger
 import com.android.adblib.utils.AdbProtocolUtils.bufferToByteDumpString
 import com.android.adblib.utils.ResizableBuffer
+import com.android.adblib.utils.closeOnException
 import com.android.adblib.utils.launchCancellable
 import com.android.adblib.withPrefix
 import kotlinx.coroutines.flow.Flow
@@ -111,6 +112,27 @@ internal class AdbDeviceServicesImpl(
             shutdownOutput,
             stripCrLf = false,
         )
+    }
+
+    override suspend fun rawExec(device: DeviceSelector, command: String): AdbChannel {
+        // Note: We only track the time to launch the shell command, since command execution
+        // itself can take an arbitrary amount of time.
+        val timeout = TimeoutTracker(host.timeProvider, timeout, unit)
+        val workBuffer = serviceRunner.newResizableBuffer()
+        val channel = serviceRunner.switchToTransport(device, workBuffer, timeout)
+        channel.closeOnException {
+            val service = getExecServiceString(ExecService.EXEC, command)
+            host.logger.info { "\"$service\" - sending local service request to ADB daemon, timeout: $timeout" }
+            serviceRunner.sendAdbServiceRequest(channel, workBuffer, service, timeout)
+            serviceRunner.consumeOkayFailResponse(
+                device,
+                service,
+                channel,
+                workBuffer,
+                timeout
+            )
+        }
+        return channel
     }
 
     override fun <T> shellV2(
