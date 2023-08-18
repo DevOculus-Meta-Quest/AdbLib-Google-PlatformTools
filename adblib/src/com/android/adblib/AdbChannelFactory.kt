@@ -146,6 +146,12 @@ interface AdbChannelFactory {
         bufferSize: Int = DEFAULT_CHANNEL_BUFFER_SIZE
     ): AdbBufferedOutputChannel
 
+    /**
+     * Creates an [AdbInputChannel] that wraps the provided [InputStream] to read from it.
+     *
+     * The [inputStream] is closed when this channel is [closed][AdbInputChannel.close].
+     */
+    fun wrapInputStream(inputStream: InputStream): AdbInputChannel
 }
 
 /**

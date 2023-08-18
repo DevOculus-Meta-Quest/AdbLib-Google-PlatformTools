@@ -30,6 +30,7 @@ import com.android.adblib.impl.AdbReadAheadInputChannel
 import com.android.adblib.impl.AdbWriteBackOutputChannel
 import com.android.adblib.utils.closeOnException
 import kotlinx.coroutines.withContext
+import java.io.InputStream
 import java.net.InetSocketAddress
 import java.net.StandardSocketOptions
 import java.nio.channels.AsynchronousFileChannel
@@ -109,6 +110,12 @@ internal class AdbChannelFactoryImpl(private val session: AdbSession) : AdbChann
         bufferSize: Int
     ): AdbBufferedOutputChannel {
         return AdbWriteBackOutputChannel(session, output, bufferSize)
+    }
+
+    override fun wrapInputStream(
+        inputStream: InputStream
+    ): AdbInputChannel {
+        return AdbInputStreamChannel(session.host, inputStream)
     }
 
     private suspend fun openOutput(
