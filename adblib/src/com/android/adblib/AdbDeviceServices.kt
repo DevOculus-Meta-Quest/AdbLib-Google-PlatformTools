@@ -381,6 +381,16 @@ interface AdbDeviceServices {
      *     is closed.
      */
     suspend fun jdwp(device: DeviceSelector, pid: Int): AdbChannel
+
+    /**
+     * Restart adbd with root permissions ("`<device-transport>:root`" query).
+     */
+    suspend fun root(device: DeviceSelector): RootResult
+
+    /**
+     * Restart adbd without root permissions ("`<device-transport>:unroot`" query).
+     */
+    suspend fun unRoot(device: DeviceSelector): RootResult
 }
 
 /**
@@ -751,3 +761,33 @@ interface DeviceProperties {
 }
 
 data class DeviceProperty(val name: String, val value: String)
+
+/**
+ * The result of [AdbDeviceServices.root] or [AdbDeviceServices.unRoot]
+ */
+class RootResult(
+    /**
+     * The full status string returned by `adbd` (the ADB Daemon on the device)
+     */
+    val rawStatus: String
+) {
+
+    /**
+     * Whether the [AdbDeviceServices.root] or [AdbDeviceServices.unRoot] operation resulted
+     * in the device restarting: When ADBD has to switch to/from the `root` or `unroot` state,
+     * it needs to restart itself, resulting the device disconnecting for a short period of time.
+     */
+    val restarting: Boolean
+        get() = status.startsWith("restarting")
+
+    /**
+     * The full status string returned by `adbd` (the ADB Daemon on the device), without the
+     * trailing newline.
+     */
+    val status: String
+        get() = rawStatus.trim('\n')
+
+    override fun toString(): String {
+        return "${this::class.simpleName}(status=\"$status\", restarting=$restarting)"
+    }
+}

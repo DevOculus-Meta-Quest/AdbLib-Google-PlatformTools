@@ -175,4 +175,28 @@ class DeviceSelectorTest {
         Assert.assertEquals(25L, device5.transportId)
         Assert.assertEquals(252L, device52.transportId)
     }
+
+    @Test
+    fun withTransportIdInResponseAllowsStoringTransportId() {
+        // Prepare
+        val device1 = DeviceSelector.fromSerialNumber("12345").withTransportIdInResponse()
+        val device2 = DeviceSelector.fromTransportId(1).withTransportIdInResponse()
+        val device3 = DeviceSelector.local().withTransportIdInResponse()
+        val device4 = DeviceSelector.usb().withTransportIdInResponse()
+        val device5 = DeviceSelector.any().withTransportIdInResponse()
+
+        // Act
+        device1.transportId = 10
+        device2.transportId = 15 // Note: This is ignored because it already has a transport id
+        device3.transportId = 20
+        device4.transportId = 25
+        device5.transportId = 30
+
+        // Assert
+        Assert.assertEquals(10L, device1.transportId)
+        Assert.assertEquals(1L, device2.transportId)
+        Assert.assertEquals(20L, device3.transportId)
+        Assert.assertEquals(25L, device4.transportId)
+        Assert.assertEquals(30L, device5.transportId)
+    }
 }

@@ -25,6 +25,7 @@ import com.android.adblib.DeviceSelector
 import com.android.adblib.INFINITE_DURATION
 import com.android.adblib.ProcessIdList
 import com.android.adblib.ReverseSocketList
+import com.android.adblib.RootResult
 import com.android.adblib.ShellCollector
 import com.android.adblib.ShellV2Collector
 import com.android.adblib.SocketSpec
@@ -261,6 +262,14 @@ class FakeAdbDeviceServices(override val session: AdbSession) : AdbDeviceService
     }
 
     override suspend fun jdwp(device: DeviceSelector, pid: Int): AdbChannel {
+        TODO("Not yet implemented")
+    }
+
+    override suspend fun root(device: DeviceSelector): RootResult {
+        TODO("Not yet implemented")
+    }
+
+    override suspend fun unRoot(device: DeviceSelector): RootResult {
         TODO("Not yet implemented")
     }
 

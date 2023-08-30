@@ -98,12 +98,21 @@ abstract class DeviceSelector {
      * See [transportPrefix]: all `host:tport` prefixes result in ADB sending an 8 byte
      * transport ID in the response.
      */
-    internal open val responseContainsTransportId = false
+    internal open val responseContainsTransportId: Boolean
+        get() = false
+
+    /**
+     * Returns a [DeviceSelector] equivalent to this instance, i.e. selecting the same
+     * device, but with the guarantee that [responseContainsTransportId] is true, i.e.
+     * a call to the ADB server will result in setting the [transportId] of the device.
+     */
+    internal abstract fun withTransportIdInResponse(): DeviceSelector
 
     /**
      * The device serial number if this [DeviceSelector] contains one, `null` otherwise
      */
-    internal open val serialNumber: String? = null
+    internal open val serialNumber: String?
+        get() = null
 
     /**
      * A short human-readable description
@@ -122,6 +131,10 @@ abstract class DeviceSelector {
 
         override val shortDescription: String
             get() = serialNumberShortDescription(serialNumber)
+
+        override fun withTransportIdInResponse(): DeviceSelector {
+            return factoryWithTransportIdTracking.fromSerialNumber(serialNumber)
+        }
     }
 
     private class TransportId(private val value: Long) : DeviceSelector() {
@@ -143,6 +156,9 @@ abstract class DeviceSelector {
         override val shortDescription: String
             get() = transportIdShortDescription(value)
 
+        override fun withTransportIdInResponse(): DeviceSelector {
+            return this
+        }
     }
 
     private object Usb : DeviceSelector() {
@@ -157,6 +173,10 @@ abstract class DeviceSelector {
 
         override val shortDescription: String
             get() = USB_SHORT_DESCRIPTION
+
+        override fun withTransportIdInResponse(): DeviceSelector {
+            return factoryWithTransportIdTracking.usb()
+        }
     }
 
     private object Local : DeviceSelector() {
@@ -171,6 +191,10 @@ abstract class DeviceSelector {
 
         override val shortDescription: String
             get() = LOCAL_SHORT_DESCRIPTION
+
+        override fun withTransportIdInResponse(): DeviceSelector {
+            return factoryWithTransportIdTracking.local()
+        }
     }
 
     private object Any : DeviceSelector() {
@@ -185,6 +209,10 @@ abstract class DeviceSelector {
 
         override val shortDescription: String
             get() = ANY_SHORT_DESCRIPTION
+
+        override fun withTransportIdInResponse(): DeviceSelector {
+            return factoryWithTransportIdTracking.any()
+        }
     }
 
     /**
@@ -280,6 +308,10 @@ abstract class DeviceSelector {
 
                 override val shortDescription: String
                     get() = serialNumberShortDescription(serialNumber)
+
+                override fun withTransportIdInResponse(): DeviceSelector {
+                    return factoryWithTransportIdTracking.fromSerialNumber(serialNumber)
+                }
             }
 
             private object UsbWithTransportId : DeviceSelector() {
@@ -297,6 +329,10 @@ abstract class DeviceSelector {
 
                 override val shortDescription: String
                     get() = USB_SHORT_DESCRIPTION
+
+                override fun withTransportIdInResponse(): DeviceSelector {
+                    return factoryWithTransportIdTracking.usb()
+                }
             }
 
             private object LocalWithTransportId : DeviceSelector() {
@@ -314,6 +350,10 @@ abstract class DeviceSelector {
 
                 override val shortDescription: String
                     get() = LOCAL_SHORT_DESCRIPTION
+
+                override fun withTransportIdInResponse(): DeviceSelector {
+                    return factoryWithTransportIdTracking.local()
+                }
             }
 
             private object AnyWithTransportId : DeviceSelector() {
@@ -331,6 +371,10 @@ abstract class DeviceSelector {
 
                 override val shortDescription: String
                     get() = ANY_SHORT_DESCRIPTION
+
+                override fun withTransportIdInResponse(): DeviceSelector {
+                    return factoryWithTransportIdTracking.any()
+                }
             }
         }
 
@@ -362,10 +406,14 @@ abstract class DeviceSelector {
                     get() = delegate.transportPrefix
 
                 override val responseContainsTransportId: Boolean
-                    get() = delegate.responseContainsTransportId
+                    get() = true
 
                 override val shortDescription: String
                     get() = delegate.shortDescription
+
+                override fun withTransportIdInResponse(): DeviceSelector {
+                    return this
+                }
             }
         }
 

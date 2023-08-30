@@ -2332,6 +2332,53 @@ class AdbDeviceServicesTest {
     }
 
     @Test
+    fun testRoot(): Unit = runBlockingWithTimeout {
+        // Prepare
+        val fakeDevice = addFakeDevice(fakeAdb)
+        val deviceSelector = DeviceSelector.fromSerialNumber(fakeDevice.deviceId)
+
+        // Act
+        val status = deviceServices.root(deviceSelector)
+
+        // Assert
+        Assert.assertTrue(status.restarting)
+        Assert.assertTrue(status.status.startsWith("restarting"))
+        Assert.assertEquals(status.rawStatus, status.status + '\n')
+    }
+
+    @Test
+    fun testUnRoot(): Unit = runBlockingWithTimeout {
+        // Prepare
+        val fakeDevice = addFakeDevice(fakeAdb)
+        val deviceSelector = DeviceSelector.fromSerialNumber(fakeDevice.deviceId)
+        fakeAdb.fakeAdbServer.restartDeviceAsync(fakeDevice) {
+            it.copy(isRoot = true)
+        }.await()
+
+        // Act
+        val status = deviceServices.unRoot(deviceSelector)
+
+        // Assert
+        Assert.assertTrue(status.restarting)
+        Assert.assertTrue(status.status.startsWith("restarting"))
+        Assert.assertEquals(status.rawStatus, status.status + '\n')
+    }
+
+    @Test
+    fun testUnRootIfAlreadyUnRoot(): Unit = runBlockingWithTimeout {
+        // Prepare
+        val fakeDevice = addFakeDevice(fakeAdb)
+        val deviceSelector = DeviceSelector.fromSerialNumber(fakeDevice.deviceId)
+
+        // Act
+        val status = deviceServices.unRoot(deviceSelector)
+
+        // Assert
+        Assert.assertFalse(status.restarting)
+        Assert.assertEquals(status.rawStatus, status.status + '\n')
+    }
+
+    @Test
     fun testTrackJdwp(): Unit = runBlockingWithTimeout {
         // Prepare
         val fakeDevice = addFakeDevice(fakeAdb)

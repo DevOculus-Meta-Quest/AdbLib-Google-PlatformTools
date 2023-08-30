@@ -16,16 +16,17 @@
 package com.android.adblib.impl
 
 import com.android.adblib.AdbChannel
-import com.android.adblib.AdbServerChannelProvider
 import com.android.adblib.AdbDeviceServices
 import com.android.adblib.AdbDeviceSyncServices
 import com.android.adblib.AdbInputChannel
+import com.android.adblib.AdbServerChannelProvider
 import com.android.adblib.AdbSession
 import com.android.adblib.AdbSessionHost
 import com.android.adblib.AppProcessEntry
 import com.android.adblib.DeviceSelector
 import com.android.adblib.ProcessIdList
 import com.android.adblib.ReverseSocketList
+import com.android.adblib.RootResult
 import com.android.adblib.ShellCollector
 import com.android.adblib.ShellV2Collector
 import com.android.adblib.SocketSpec
@@ -36,7 +37,9 @@ import com.android.adblib.impl.services.AdbServiceRunner
 import com.android.adblib.impl.services.OkayDataExpectation
 import com.android.adblib.impl.services.TrackAppService
 import com.android.adblib.impl.services.TrackJdwpService
+import com.android.adblib.readRemaining
 import com.android.adblib.thisLogger
+import com.android.adblib.utils.AdbProtocolUtils
 import com.android.adblib.utils.AdbProtocolUtils.bufferToByteDumpString
 import com.android.adblib.utils.ResizableBuffer
 import com.android.adblib.utils.closeOnException
@@ -264,6 +267,34 @@ internal class AdbDeviceServicesImpl(
         val tracker = TimeoutTracker(host.timeProvider, timeout, unit)
         val service = "jdwp:$pid"
         return serviceRunner.startDaemonService(device, service, tracker)
+    }
+
+    override suspend fun root(device: DeviceSelector): RootResult {
+        return rootImpl(device, "root:")
+    }
+
+    override suspend fun unRoot(device: DeviceSelector): RootResult {
+        return rootImpl(device, "unroot:")
+    }
+
+    private suspend fun rootImpl(device: DeviceSelector, service: String): RootResult {
+        val tracker = TimeoutTracker(host.timeProvider, timeout, unit)
+        // ADB client code:
+        // https://cs.android.com/android/platform/superproject/+/3a52886262ae22477a7d8ffb12adba64daf6aafa:packages/modules/adb/client/commandline.cpp;l=1103
+        // ADB Daemon code:
+        // https://cs.android.com/android/platform/superproject/+/3a52886262ae22477a7d8ffb12adba64daf6aafa:packages/modules/adb/daemon/services.cpp;l=282
+        val workBuffer = serviceRunner.newResizableBuffer()
+        return serviceRunner.startDaemonService(device, service, tracker, workBuffer).use { channel ->
+            // The "root:" or "unroot:" services are a special case of services returning a UTF-8
+            // string without any length prefix, so we just need to read bytes until EOF.
+            workBuffer.clear()
+            channel.readRemaining(workBuffer)
+            val buffer = workBuffer.afterChannelRead(useMarkedPosition = false)
+            val status = AdbProtocolUtils.byteBufferToString(buffer)
+            RootResult(status)
+        }.also {
+            logger.debug { "${device.shortDescription} - \"$service\": $it" }
+        }
     }
 
     override fun <T> abb_exec(
