@@ -135,7 +135,7 @@ class AdbHostServicesTest {
     @Test
     fun testVersionFaultyProtocol() {
         // Prepare
-        fakeAdb.installHostHandler(VersionCommandHandler.COMMAND) { FaultyVersionCommandHandler() }
+        fakeAdb.installHostHandler(FaultyVersionCommandHandler())
 
         // Act (should throw)
         exceptionRule.expect(AdbProtocolErrorException::class.java)

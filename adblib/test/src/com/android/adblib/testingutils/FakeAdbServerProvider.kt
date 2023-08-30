@@ -29,7 +29,6 @@ import kotlinx.coroutines.runInterruptible
 import java.net.InetAddress
 import java.net.InetSocketAddress
 import java.util.concurrent.TimeUnit
-import java.util.function.Supplier
 
 /**
  * Timeout for fake adb server APIs that go through the server's internal
@@ -90,11 +89,8 @@ class FakeAdbServerProvider internal constructor(): AutoCloseable {
         return this
     }
 
-    fun installHostHandler(
-        command: String,
-        handlerConstructor: Supplier<HostCommandHandler>
-    ): FakeAdbServerProvider {
-        builder.setHostCommandHandler(command, handlerConstructor)
+    fun installHostHandler(handler: HostCommandHandler): FakeAdbServerProvider {
+        builder.addHostHandler(handler)
         return this
     }
 
