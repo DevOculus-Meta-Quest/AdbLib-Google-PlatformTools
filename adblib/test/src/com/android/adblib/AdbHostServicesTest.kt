@@ -18,13 +18,15 @@ package com.android.adblib
 import com.android.adblib.AdbHostServices.DeviceInfoFormat.LONG_FORMAT
 import com.android.adblib.AdbHostServices.DeviceInfoFormat.SHORT_FORMAT
 import com.android.adblib.DeviceState.ONLINE
+import com.android.adblib.testingutils.CoroutineTestUtils.runBlockingWithTimeout
 import com.android.adblib.testingutils.FakeAdbServerProviderRule
 import com.android.fakeadbserver.DeviceState
 import com.android.fakeadbserver.MdnsService
 import com.android.fakeadbserver.devicecommandhandlers.SyncCommandHandler
 import com.android.fakeadbserver.hostcommandhandlers.FaultyVersionCommandHandler
-import com.android.fakeadbserver.hostcommandhandlers.VersionCommandHandler
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert
 import org.junit.Rule
@@ -764,5 +766,60 @@ class AdbHostServicesTest {
             Assert.assertEquals("tcp:1000", forwardEntry.local.toQueryString())
             Assert.assertEquals("tcp:4000", forwardEntry.remote.toQueryString())
         }
+    }
+
+    @Test
+    fun testWaitForOffline(): Unit = runBlockingWithTimeout {
+        // Prepare
+        val fakeDevice =
+            fakeAdb.connectDevice(
+                "1234",
+                "test1",
+                "test2",
+                "model",
+                "sdk",
+                DeviceState.HostConnectionType.USB
+            )
+        fakeDevice.deviceStatus = DeviceState.DeviceStatus.ONLINE
+        val deviceSelector = DeviceSelector.fromSerialNumber(fakeDevice.deviceId)
+
+        // Act
+        val job = launch {
+            hostServices.waitFor(deviceSelector, WaitForState.DISCONNECT)
+        }
+        // We have to delay so that "waitFor" has a chance to run
+        delay(100)
+        val waitForWasActiveBeforeDisconnectDevice = job.isActive
+        fakeAdb.disconnectDevice(fakeDevice.deviceId)
+        job.join()
+
+        // Assert
+        Assert.assertTrue(waitForWasActiveBeforeDisconnectDevice)
+        Assert.assertTrue(job.isCompleted)
+    }
+
+    @Test
+    fun testWaitForOnline(): Unit = runBlockingWithTimeout {
+        // Prepare
+        val deviceSelector = DeviceSelector.any()
+
+        // Act
+        val job = launch {
+            hostServices.waitFor(deviceSelector, WaitForState.ONLINE)
+        }
+        fakeAdb.connectDevice(
+            deviceId = "1234",
+            manufacturer = "test1",
+            deviceModel = "test2",
+            release = "model",
+            sdk = "sdk",
+            hostConnectionType = DeviceState.HostConnectionType.USB
+        ).also {
+            it.deviceStatus = DeviceState.DeviceStatus.ONLINE
+        }
+        job.join()
+
+        // Assert
+        Assert.assertTrue(job.isCompleted)
     }
 }

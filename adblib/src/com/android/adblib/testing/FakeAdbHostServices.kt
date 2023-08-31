@@ -27,11 +27,12 @@ import com.android.adblib.MdnsCheckResult
 import com.android.adblib.MdnsServiceList
 import com.android.adblib.PairResult
 import com.android.adblib.SocketSpec
+import com.android.adblib.WaitForState
+import com.android.adblib.WaitForTransport
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.takeWhile
 import java.io.Closeable
@@ -226,6 +227,14 @@ class FakeAdbHostServices(override val session: AdbSession) : AdbHostServices, C
 
     override suspend fun disconnect(deviceAddress: DeviceAddress) {
         devices = DeviceList(devices - DeviceInfo(serialNumber=deviceAddress.address, deviceState=DeviceState.ONLINE), devices.errors)
+    }
+
+    override suspend fun waitFor(
+      device: DeviceSelector,
+      deviceState: WaitForState,
+      transport: WaitForTransport
+    ) {
+        TODO("Not yet implemented")
     }
 
     private fun <T> MutableSharedFlow<T>.emitOrThrow(value: T) {

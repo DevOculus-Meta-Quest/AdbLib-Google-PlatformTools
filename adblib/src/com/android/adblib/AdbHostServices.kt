@@ -2,6 +2,7 @@ package com.android.adblib
 
 import com.android.adblib.utils.toImmutableList
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.StateFlow
 
 /**
  * Exposes services specific to the ADB Server (or "host") as `suspend` functions
@@ -175,6 +176,94 @@ interface AdbHostServices {
      * Disconnects the specified device ("host:disconnect:$deviceAddress").
      */
     suspend fun disconnect(deviceAddress: DeviceAddress)
+
+    /**
+     * Waits for [device] to be in a given [deviceState] using the given [transport] option
+     * ("`<device-prefix>:wait-for-<transport>-<state>`" query).
+     *
+     * From the output of [`adb help`](https://cs.android.com/android/platform/superproject/+/3a52886262ae22477a7d8ffb12adba64daf6aafa:packages/modules/adb/client/commandline.cpp;l=209):
+     *
+     *     wait-for-TRANSPORT-STATE: wait for device to be in a given state
+     *      TRANSPORT: "local" | "usb" | "any"
+     *      STATE: "device" | "recovery" | "rescue" | "sideload" | "bootloader" | "any" | "disconnect"
+     *
+     * **Note**
+     *
+     * The intent of this service is for CLI applications that want to expose a way
+     * to wait for a device to be in a given state before processing to the next command
+     * in a script.
+     *
+     * For other types of applications, it is usually easier to use [AdbHostServices.trackDevices]
+     * and wait on the [StateFlow].
+     */
+    suspend fun waitFor(
+        device: DeviceSelector,
+        deviceState: WaitForState,
+        transport: WaitForTransport = WaitForTransport.ANY
+    )
+}
+
+/**
+ * A device state value to use when calling [AdbHostServices.waitFor]
+ *
+ * @see ONLINE
+ * @see RECOVERY
+ * @see RESCUE
+ * @see SIDELOAD
+ * @see BOOTLOADER
+ * @see ANY
+ * @see DISCONNECT
+ */
+class WaitForState(private val queryValue: String) {
+
+    /**
+     * Returns the string to use in the underlying ADB protocol command/query
+     */
+    internal fun toQueryString(): String {
+        return queryValue
+    }
+
+    override fun toString(): String {
+        return "wait-for-state: " + toQueryString()
+    }
+
+    companion object {
+
+        val ONLINE = WaitForState("device")
+        val RECOVERY = WaitForState("recovery")
+        val RESCUE = WaitForState("rescue")
+        @Suppress("SpellCheckingInspection")
+        val SIDELOAD = WaitForState("sideload")
+        val BOOTLOADER = WaitForState("bootloader")
+        val ANY = WaitForState("any")
+        val DISCONNECT = WaitForState("disconnect")
+    }
+}
+
+/**
+ * A device transport value to use when calling [AdbHostServices.waitFor]
+ *
+ * @see USB
+ * @see LOCAL
+ * @see ANY
+ */
+class WaitForTransport(private val queryValue: String) {
+    /**
+     * Returns the string to use in the underlying ADB protocol command/query
+     */
+    internal fun toQueryString(): String {
+        return queryValue
+    }
+
+    override fun toString(): String {
+        return "wait-for-transport: " + toQueryString()
+    }
+
+    companion object {
+        val USB = WaitForTransport("usb")
+        val LOCAL = WaitForTransport("local")
+        val ANY = WaitForTransport("any")
+    }
 }
 
 /**

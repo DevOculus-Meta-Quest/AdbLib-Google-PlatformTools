@@ -15,6 +15,8 @@ import com.android.adblib.MdnsCheckResult
 import com.android.adblib.MdnsServiceList
 import com.android.adblib.PairResult
 import com.android.adblib.SocketSpec
+import com.android.adblib.WaitForState
+import com.android.adblib.WaitForTransport
 import com.android.adblib.impl.services.AdbServiceRunner
 import com.android.adblib.impl.services.OkayDataExpectation
 import com.android.adblib.impl.services.TrackDevicesService
@@ -244,5 +246,28 @@ internal class AdbHostServicesImpl(
         val tracker = TimeoutTracker(host.timeProvider, timeout, unit)
         val service = "host:disconnect:$deviceAddress"
         serviceRunner.runHostQuery(service, tracker, OkayDataExpectation.NOT_EXPECTED)
+    }
+
+    override suspend fun waitFor(
+        device: DeviceSelector,
+        deviceState: WaitForState,
+        transport: WaitForTransport
+    ) {
+        // ADB client code:
+        // https://cs.android.com/android/platform/superproject/+/3a52886262ae22477a7d8ffb12adba64daf6aafa:packages/modules/adb/client/commandline.cpp;l=1068
+        //
+        // ADB Daemon code:
+        // https://cs.android.com/android/platform/superproject/+/master:packages/modules/adb/services.cpp;drc=843f191ff888a9b4c27331ea416323b8a105f56a;l=163
+        //
+        // ADB Documentation:
+        // https://cs.android.com/android/platform/superproject/+/3a52886262ae22477a7d8ffb12adba64daf6aafa:packages/modules/adb/client/commandline.cpp;l=209
+        // wait-for-TRANSPORT-STATE
+        // where TRANSPORT: "local" | "usb" | "any"
+        //           STATE: "device" | "recovery" | "rescue" | "sideload" | "bootloader" | "any" | "disconnect"
+        val tracker = TimeoutTracker(host.timeProvider, timeout, unit)
+        val service = "wait-for-${transport.toQueryString()}-${deviceState.toQueryString()}"
+        serviceRunner.runHostDeviceQuery2(device, service, tracker, OkayDataExpectation.NOT_EXPECTED).also {
+            logger.debug { "${device.shortDescription} - \"$service\": success" }
+        }
     }
 }

@@ -384,11 +384,17 @@ interface AdbDeviceServices {
 
     /**
      * Restart adbd with root permissions ("`<device-transport>:root`" query).
+     *
+     * Note: This function does *not* wait for the device to come back online after it restarts.
+     * See the [rootAndWait] function for such a capability.
      */
     suspend fun root(device: DeviceSelector): RootResult
 
     /**
      * Restart adbd without root permissions ("`<device-transport>:unroot`" query).
+     *
+     * Note: This function does *not* wait for the device to come back online after it restarts.
+     * See the [unRootAndWait] function for such a capability.
      */
     suspend fun unRoot(device: DeviceSelector): RootResult
 }
@@ -789,5 +795,40 @@ class RootResult(
 
     override fun toString(): String {
         return "${this::class.simpleName}(status=\"$status\", restarting=$restarting)"
+    }
+}
+
+/**
+ * Restart adbd with root permissions, waiting for [device] to come back online
+ * if [RootResult.restarting] is `true`.
+ */
+suspend fun AdbDeviceServices.rootAndWait(device: DeviceSelector): RootResult {
+    return rootAndWaitImpl(device) { deviceSelector -> root(deviceSelector) }
+}
+
+/**
+ * Restart adbd without root permissions, waiting for [device] to come back online
+ * if [RootResult.restarting] is `true`.
+ */
+suspend fun AdbDeviceServices.unRootAndWait(device: DeviceSelector): RootResult {
+    return rootAndWaitImpl(device) { deviceSelector -> unRoot(deviceSelector) }
+}
+
+private suspend fun AdbDeviceServices.rootAndWaitImpl(
+    device: DeviceSelector,
+    block: suspend AdbDeviceServices.(DeviceSelector) -> RootResult
+): RootResult {
+    // Call root/unroot, retrieving the device transport id
+    val deviceWithTransportId = device.withTransportIdInResponse()
+    return block(deviceWithTransportId).also { rootResult ->
+        if (rootResult.restarting) {
+            // Wait for device to come back online using the transport id we received
+            val transportId = deviceWithTransportId.transportId
+                ?: throw AdbProtocolErrorException("Transport ID is not present in device selector")
+            session.hostServices.waitFor(
+                DeviceSelector.fromTransportId(transportId),
+                WaitForState.DISCONNECT)
+            session.hostServices.waitFor(device, WaitForState.ONLINE)
+        }
     }
 }
