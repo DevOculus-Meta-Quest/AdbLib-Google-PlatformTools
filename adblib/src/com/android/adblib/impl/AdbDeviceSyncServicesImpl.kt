@@ -99,14 +99,14 @@ internal class AdbDeviceSyncServicesImpl private constructor(
                 val host = serviceRunner.host
                 val tracker = TimeoutTracker(host.timeProvider, timeout, unit)
                 val workBuffer = serviceRunner.newResizableBuffer()
+                val shortServiceDescription = "sync:"
                 // Switch the channel to the right transport (i.e. device)
-                val channel = serviceRunner.switchToTransport(device, workBuffer, tracker)
+                val channel = serviceRunner.switchToTransport(device, workBuffer, shortServiceDescription, tracker)
                 channel.closeOnException {
                     // Start the "sync" service
-                    val localService = "sync:"
-                    host.logger.debug { "$localService - sending local service request to ADB daemon, timeout: $tracker" }
-                    serviceRunner.sendAdbServiceRequest(channel, workBuffer, localService, tracker)
-                    serviceRunner.consumeOkayFailResponse(device, localService, channel, workBuffer, tracker)
+                    host.logger.debug { "$shortServiceDescription - sending local service request to ADB daemon, timeout: $tracker" }
+                    serviceRunner.sendAdbServiceRequest(channel, workBuffer, shortServiceDescription, tracker)
+                    serviceRunner.consumeOkayFailResponse(device, shortServiceDescription, channel, workBuffer, tracker)
 
                     // Now that everything is setup, returns the instance
                     AdbDeviceSyncServicesImpl(serviceRunner, device, channel)

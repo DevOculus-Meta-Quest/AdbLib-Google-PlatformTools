@@ -18,6 +18,7 @@ import com.android.adblib.SocketSpec
 import com.android.adblib.impl.services.AdbServiceRunner
 import com.android.adblib.impl.services.OkayDataExpectation
 import com.android.adblib.impl.services.TrackDevicesService
+import com.android.adblib.thisLogger
 import kotlinx.coroutines.flow.Flow
 import java.io.EOFException
 import java.util.concurrent.TimeUnit
@@ -31,6 +32,7 @@ internal class AdbHostServicesImpl(
 
     private val host: AdbSessionHost
         get() = session.host
+    private val logger = thisLogger(session)
     private val serviceRunner = AdbServiceRunner(session, channelProvider)
     private val deviceParser = DeviceListParser()
     private val mdnsCheckParser = MdnsCheckParser()
@@ -50,7 +52,7 @@ internal class AdbHostServicesImpl(
                     "Invalid ADB response (expected 4 digit hex. number, got \"${versionString}\" instead)",
                     e
                 )
-            host.logger.warn(error, "ADB protocol error")
+            logger.warn(error, "ADB protocol error")
             throw error
         }
     }
@@ -84,10 +86,10 @@ internal class AdbHostServicesImpl(
         try {
             val workBuffer = serviceRunner.newResizableBuffer()
             serviceRunner.startHostQuery(workBuffer, "host:kill", tracker).use {
-                host.logger.info { "ADB server was killed, timeout left is $tracker" }
+                logger.info { "ADB server was killed, timeout left is $tracker" }
             }
         } catch (e: EOFException) {
-            host.logger.info {
+            logger.info {
                 "Received EOF instead of OKAY response. This can happen, " +
                         "as server was killed just after sending OKAY"
             }

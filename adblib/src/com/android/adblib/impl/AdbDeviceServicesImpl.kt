@@ -122,9 +122,9 @@ internal class AdbDeviceServicesImpl(
         // itself can take an arbitrary amount of time.
         val timeout = TimeoutTracker(host.timeProvider, timeout, unit)
         val workBuffer = serviceRunner.newResizableBuffer()
-        val channel = serviceRunner.switchToTransport(device, workBuffer, timeout)
+        val service = getExecServiceString(ExecService.EXEC, command)
+        val channel = serviceRunner.switchToTransport(device, workBuffer, service, timeout)
         channel.closeOnException {
-            val service = getExecServiceString(ExecService.EXEC, command)
             host.logger.info { "\"$service\" - sending local service request to ADB daemon, timeout: $timeout" }
             serviceRunner.sendAdbServiceRequest(channel, workBuffer, service, timeout)
             serviceRunner.consumeOkayFailResponse(

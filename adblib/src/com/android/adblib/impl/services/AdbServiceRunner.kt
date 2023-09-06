@@ -171,7 +171,8 @@ internal class AdbServiceRunner(
         workBuffer: ResizableBuffer,
         device: DeviceSelector?,
         service: String,
-        timeout: TimeoutTracker
+        timeout: TimeoutTracker,
+        shortServiceDescription: String = service
     ): AdbChannel {
         val logPrefix = "Running ADB server query \"${service}\" -"
         logger.debug { "$logPrefix opening connection to ADB server, timeout=$timeout" }
@@ -179,7 +180,7 @@ internal class AdbServiceRunner(
             logger.debug { "$logPrefix sending request to ADB server, timeout=$timeout" }
             sendAdbServiceRequest(channel, workBuffer, service, timeout)
             logger.debug { "$logPrefix receiving response from ADB server, timeout=$timeout" }
-            consumeOkayFailResponse(device, service, channel, workBuffer, timeout)
+            consumeOkayFailResponse(device, shortServiceDescription, channel, workBuffer, timeout)
             workBuffer.clear()
             return channel
         }
@@ -253,7 +254,7 @@ internal class AdbServiceRunner(
         okayData: OkayDataExpectation
     ): String? {
         val workBuffer = newResizableBuffer()
-        val channel = switchToTransport(device, workBuffer, timeout)
+        val channel = switchToTransport(device, workBuffer, query, timeout)
         return channel.use {
             sendAdbServiceRequest(channel, workBuffer, query, timeout)
             consumeOkayFailResponse(device, query, channel, workBuffer, timeout)
@@ -271,7 +272,7 @@ internal class AdbServiceRunner(
         okayData: OkayDataExpectation
     ): String? {
         val workBuffer = newResizableBuffer()
-        val channel = switchToTransport(device, workBuffer, timeout)
+        val channel = switchToTransport(device, workBuffer, query, timeout)
         return channel.use {
             sendAdbServiceRequest(channel, workBuffer, query, timeout)
             // We receive 2 OKAY answers from the ADB Host: 1st OKAY is connect, 2nd OKAY is status.
@@ -310,7 +311,7 @@ internal class AdbServiceRunner(
         timeout: TimeoutTracker,
         workBuffer: ResizableBuffer = newResizableBuffer()
     ): AdbChannel {
-        val channel = switchToTransport(device, workBuffer, timeout)
+        val channel = switchToTransport(device, workBuffer, service, timeout)
         channel.closeOnException {
             logger.debug { "\"$service\" - sending local service request to ADB daemon, timeout: $timeout" }
             sendAdbServiceRequest(channel, workBuffer, service, timeout)
@@ -327,7 +328,7 @@ internal class AdbServiceRunner(
      */
     suspend fun consumeOkayFailResponse(
         device: DeviceSelector?,
-        service: String,
+        shortServiceDescription: String,
         channel: AdbInputChannel,
         workBuffer: ResizableBuffer,
         timeout: TimeoutTracker
@@ -343,7 +344,7 @@ internal class AdbServiceRunner(
                 // Nothing to do
             }
             AdbProtocolUtils.isFail(data) -> {
-                readFailResponseAndThrow(device, service, channel, workBuffer, timeout)
+                readFailResponseAndThrow(device, shortServiceDescription, channel, workBuffer, timeout)
             }
             else -> {
                 val error = AdbProtocolErrorException(
@@ -419,16 +420,16 @@ internal class AdbServiceRunner(
 
     private suspend fun readFailResponseAndThrow(
         device: DeviceSelector?,
-        service: String,
+        shortServiceDescription: String,
         channel: AdbInputChannel,
         workBuffer: ResizableBuffer,
         timeout: TimeoutTracker
     ) {
         val data = readLengthPrefixedData(channel, workBuffer, timeout)
         throw if (device == null) {
-            AdbHostFailResponseException(service, data)
+            AdbHostFailResponseException(shortServiceDescription, data)
         } else {
-            AdbDeviceFailResponseException(device, service, data)
+            AdbDeviceFailResponseException(device, shortServiceDescription, data)
         }
     }
 
@@ -472,10 +473,17 @@ internal class AdbServiceRunner(
     suspend fun switchToTransport(
         deviceSelector: DeviceSelector,
         workBuffer: ResizableBuffer,
+        shortServiceDescription: String,
         timeout: TimeoutTracker
     ): AdbChannel {
         val transportPrefix = deviceSelector.transportPrefix
-        startHostQueryImpl(workBuffer, deviceSelector, transportPrefix, timeout).closeOnException { channel ->
+        startHostQueryImpl(
+            workBuffer,
+            deviceSelector,
+            transportPrefix,
+            timeout,
+            shortServiceDescription = "($transportPrefix)$shortServiceDescription"
+        ).closeOnException { channel ->
             if (deviceSelector.responseContainsTransportId) {
                 deviceSelector.transportId = consumeTransportId(channel, workBuffer, timeout)
             }
