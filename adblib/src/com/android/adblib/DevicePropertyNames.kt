@@ -29,6 +29,8 @@ object DevicePropertyNames {
     const val RO_MANUFACTURER = "ro.manufacturer" // Older version of RO_PRODUCT_MANUFACTURER
     const val RO_MODEL = "ro.model" // Older version of RO_PRODUCT_MODEL
     const val RO_PRODUCT_CPU_ABI = "ro.product.cpu.abi"
+    const val RO_PRODUCT_CPU_ABI2 = "ro.product.cpu.abi2"
+    const val RO_PRODUCT_CPU_ABILIST = "ro.product.cpu.abilist"
     const val RO_PRODUCT_MANUFACTURER = "ro.product.manufacturer"
     const val RO_PRODUCT_MODEL = "ro.product.model"
     const val RO_SF_LCD_DENSITY = "ro.sf.lcd_density" // screen density for physical devices
