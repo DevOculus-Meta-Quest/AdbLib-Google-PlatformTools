@@ -16,7 +16,6 @@
 package com.android.adblib
 
 import com.android.adblib.AdbLibProperties.TRACK_DEVICES_RETRY_DELAY
-import com.android.adblib.AdbSession.Companion.create
 import com.android.adblib.CoroutineScopeCache.Key
 import com.android.adblib.impl.AdbSessionImpl
 import com.android.adblib.impl.ConnectedDevicesTrackerImpl
