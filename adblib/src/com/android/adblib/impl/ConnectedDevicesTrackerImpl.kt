@@ -84,12 +84,7 @@ internal class ConnectedDevicesTrackerImpl(override val session: AdbSession) :
 
             added.forEach { serial ->
                 logger.debug { "Adding connected device for device $serial" }
-                deviceMap[serial] =
-                    ConnectedDeviceImpl(
-                        session,
-                        CoroutineScopeCacheImpl(session.scope),
-                        activeDevices.getValue(serial)
-                    )
+                deviceMap[serial] = ConnectedDeviceImpl(session, activeDevices.getValue(serial))
             }
             removed.forEach { serial ->
                 logger.debug { "Removing connected device for device $serial" }

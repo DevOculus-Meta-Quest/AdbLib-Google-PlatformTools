@@ -26,6 +26,8 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.retryWhen
 import kotlinx.coroutines.isActive
+import java.nio.file.Path
+import java.nio.file.attribute.FileTime
 import java.time.Duration
 
 /**
@@ -114,10 +116,16 @@ fun <R> ConnectedDevice.flowWhenOnline(
 ): Flow<R> {
     val device = this
     return deviceInfoFlow
-        .map { it.deviceState }
-        .filter { it == DeviceState.ONLINE }
+        .map {
+            it.deviceState
+        }
+        .filter {
+            it == DeviceState.ONLINE
+        }
         .distinctUntilChanged()
-        .flatMapConcat { transform(device) }
+        .flatMapConcat {
+            transform(device)
+        }
         .retryWhen { throwable, _ ->
             device.thisLogger(session).warn(
                 throwable,
@@ -130,4 +138,317 @@ fun <R> ConnectedDevice.flowWhenOnline(
             }
             device.scope.isActive
         }.flowOn(session.host.ioDispatcher)
+}
+
+private val ShellManagerKey = CoroutineScopeCache.Key<ShellManager>("ShellManager")
+
+/**
+ * The [ShellManager] instance for executing shell commands on this [ConnectedDevice]
+ */
+val ConnectedDevice.shell: ShellManager
+    get() {
+        return cache.getOrPut(ShellManagerKey) {
+            ShellManager(this)
+        }
+    }
+
+
+private val FileSystemManagerKey = CoroutineScopeCache.Key<FileSystemManager>("FileSystemManager")
+
+/**
+ * The [FileSystemManager] instance for managing files on this [ConnectedDevice]
+ */
+val ConnectedDevice.fileSystem: FileSystemManager
+    get() {
+        return cache.getOrPut(FileSystemManagerKey) {
+            FileSystemManager(this)
+        }
+    }
+
+private val ReverseForwardManagerKey = CoroutineScopeCache.Key<ReverseForwardManager>("ReverseForwardManager")
+
+/**
+ * The [ReverseForwardManager] instance for managing "reverse forward" connections associated to
+ * this device.
+ */
+val ConnectedDevice.reverseForward: ReverseForwardManager
+    get() {
+        return cache.getOrPut(ReverseForwardManagerKey) {
+            ReverseForwardManager(this)
+        }
+    }
+
+/**
+ * Restarts the device as "root"
+ *
+ * @see AdbDeviceServices.root
+ */
+suspend fun ConnectedDevice.root(): RootResult {
+    return session.deviceServices.root(selector)
+}
+
+/**
+ * Restarts the device as "unroot"
+ *
+ * @see AdbDeviceServices.unRoot
+ */
+suspend fun ConnectedDevice.unRoot(): RootResult {
+    return session.deviceServices.unRoot(selector)
+}
+
+/**
+ * Restarts the device as "root", waiting until it is restarted
+ *
+ * @see AdbDeviceServices.rootAndWait
+ */
+suspend fun ConnectedDevice.rootAndWait(): RootResult {
+    return session.deviceServices.rootAndWait(selector)
+}
+
+/**
+ * Restarts the device as "unroot", waiting until it is restarted
+ *
+ * @see AdbDeviceServices.unRootAndWait
+ */
+suspend fun ConnectedDevice.unRootAndWait(): RootResult {
+    return session.deviceServices.unRootAndWait(selector)
+}
+
+/**
+ * Manages "reverse forward" connections of a given [ConnectedDevice]
+ */
+class ReverseForwardManager(val device: ConnectedDevice) {
+    /**
+     * Returns the list of active [reverse forwards][ReverseSocketInfo] of this [device].
+     *
+     * @see AdbDeviceServices.reverseListForward
+     */
+    suspend fun list(): ListWithErrors<ReverseSocketInfo> {
+        return device.session.deviceServices.reverseListForward(device.selector)
+    }
+
+    /**
+     * Creates a "reverse forward" socket connection from [remote] to [local] on this [device]
+     *
+     * @see AdbDeviceServices.reverseForward
+     */
+    suspend fun add(remote: SocketSpec, local: SocketSpec, rebind: Boolean = false): String? {
+        return device.session.deviceServices.reverseForward(device.selector, remote, local, rebind)
+    }
+
+    /**
+     * Closes the "reverse forward" socket connection identified by [remote] on this [device]
+     *
+     * @see AdbDeviceServices.reverseKillForward
+     */
+    suspend fun kill(remote: SocketSpec) {
+        device.session.deviceServices.reverseKillForward(device.selector, remote)
+    }
+
+    /**
+     * Closes all "reverse forward" socket connection on this [device]
+     *
+     * @see AdbDeviceServices.reverseKillForwardAll
+     */
+    suspend fun killAll() {
+        device.session.deviceServices.reverseKillForwardAll(device.selector)
+    }
+}
+
+/**
+ * Manages file transfer for a given [ConnectedDevice]
+ */
+class FileSystemManager(val device: ConnectedDevice) {
+
+    /**
+     * Opens a [AdbDeviceSyncServices] session on this [device] for performing one or more file
+     * transfer operation. The returned [AdbDeviceSyncServices] should be
+     * [closed][AdbDeviceSyncServices.close] when not needed anymore.
+     *
+     * @see AdbDeviceServices.sync
+     */
+    suspend fun openSyncServices(): AdbDeviceSyncServices {
+        return device.session.deviceServices.sync(device.selector)
+    }
+
+    /**
+     * Opens a [AdbDeviceSyncServices] session on this [device] for performing one or more file
+     * transfer operation in the given [block].
+     *
+     * @see AdbDeviceServices.sync
+     */
+    suspend inline fun <R> withSyncServices(block: (AdbDeviceSyncServices) -> R): R {
+        return openSyncServices().use {
+            block(it)
+        }
+    }
+
+    /**
+     * Copies the contents of [sourceChannel] to the [remoteFilePath] of this [device].
+     *
+     * @see AdbDeviceServices.syncSend
+     */
+    suspend fun sendFile(
+        sourceChannel: AdbInputChannel,
+        remoteFilePath: String,
+        remoteFileMode: RemoteFileMode,
+        remoteFileTime: FileTime? = null,
+        progress: SyncProgress? = null,
+        bufferSize: Int = SYNC_DATA_MAX
+    ) {
+        device.session.deviceServices.syncSend(
+            device.selector,
+            sourceChannel,
+            remoteFilePath,
+            remoteFileMode,
+            remoteFileTime,
+            progress,
+            bufferSize
+        )
+    }
+
+    /**
+     * Copies the contents of [sourcePath] to the [remoteFilePath] of this [device].
+     *
+     * @see AdbDeviceServices.syncSend
+     */
+    suspend fun sendFile(
+        sourcePath: Path,
+        remoteFilePath: String,
+        remoteFileMode: RemoteFileMode,
+        remoteFileTime: FileTime? = null,
+        progress: SyncProgress? = null,
+        bufferSize: Int = SYNC_DATA_MAX
+    ) {
+        device.session.deviceServices.syncSend(
+            device.selector,
+            sourcePath,
+            remoteFilePath,
+            remoteFileMode,
+            remoteFileTime,
+            progress,
+            bufferSize
+        )
+    }
+
+    /**
+     * Copies the contents of the [remoteFilePath] of this [device] to [destinationChannel].
+     *
+     * @see AdbDeviceServices.syncRecv
+     */
+    suspend fun receiveFile(
+        remoteFilePath: String,
+        destinationChannel: AdbOutputChannel,
+        progress: SyncProgress? = null,
+        bufferSize: Int = SYNC_DATA_MAX
+    ) {
+        device.session.deviceServices.syncRecv(
+            device.selector,
+            remoteFilePath,
+            destinationChannel,
+            progress,
+            bufferSize
+        )
+    }
+
+    /**
+     * Copies the contents of the [remoteFilePath] of this [device] to [destinationPath].
+     *
+     * @see AdbDeviceServices.syncRecv
+     */
+    suspend fun receiveFile(
+        remoteFilePath: String,
+        destinationPath: Path,
+        progress: SyncProgress? = null,
+        bufferSize: Int = SYNC_DATA_MAX
+    ) {
+        device.session.deviceServices.syncRecv(
+            device.selector,
+            remoteFilePath,
+            destinationPath,
+            progress,
+            bufferSize
+        )
+    }
+}
+
+/**
+ * Manages execution of shell commands for a given [ConnectedDevice]
+ */
+class ShellManager(val device: ConnectedDevice) {
+
+    /**
+     * Returns a [ShellCommand] instance for executing an arbitrary shell command.
+     *
+     * @see AdbDeviceServices.shellCommand
+     */
+    fun command(command: String): ShellCommand<*> {
+        return device.session.deviceServices.shellCommand(device.selector, command)
+    }
+
+    /**
+     * Executes a shell [command] on the device, and returns the result of the execution
+     * as a [ShellCommandOutput].
+     *
+     * Note: This method should be used only for commands that output a relatively small
+     * amount of text.
+     *
+     * @see AdbDeviceServices.shellAsText
+     */
+    suspend fun executeAsText(
+        command: String,
+        stdinChannel: AdbInputChannel? = null,
+        commandTimeout: Duration = INFINITE_DURATION,
+        bufferSize: Int = DEFAULT_SHELL_BUFFER_SIZE,
+    ): ShellCommandOutput {
+        return device.session.deviceServices.shellAsText(
+            device.selector,
+            command,
+            stdinChannel,
+            commandTimeout,
+            bufferSize
+        )
+    }
+
+    /**
+     * Executes a shell [command] on the device, and returns the result of the execution
+     * as a [Flow] of [ShellCommandOutputElement].
+     *
+     * @see AdbDeviceServices.shellAsLines
+     */
+    fun executeAsLines(
+        command: String,
+        stdinChannel: AdbInputChannel? = null,
+        commandTimeout: Duration = INFINITE_DURATION,
+        bufferSize: Int = DEFAULT_SHELL_BUFFER_SIZE,
+    ): Flow<ShellCommandOutputElement> {
+        return device.session.deviceServices.shellAsLines(
+            device.selector,
+            command,
+            stdinChannel,
+            commandTimeout,
+            bufferSize
+        )
+    }
+
+    /**
+     * Executes a shell [command] on the device, and returns the result of the execution
+     * as a [Flow] of [BatchShellCommandOutputElement].
+     *
+     * @see AdbDeviceServices.shellAsLineBatches
+     */
+    fun executeAsLineBatches(
+        command: String,
+        stdinChannel: AdbInputChannel? = null,
+        commandTimeout: Duration = INFINITE_DURATION,
+        bufferSize: Int = DEFAULT_SHELL_BUFFER_SIZE,
+    ): Flow<BatchShellCommandOutputElement> {
+        return device.session.deviceServices.shellAsLineBatches(
+            device.selector,
+            command,
+            stdinChannel,
+            commandTimeout,
+            bufferSize
+        )
+    }
 }

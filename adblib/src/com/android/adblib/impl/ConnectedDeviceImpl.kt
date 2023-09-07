@@ -23,14 +23,16 @@ import com.android.adblib.DeviceState
 import com.android.adblib.deviceInfo
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 
 internal class ConnectedDeviceImpl(
   override val session: AdbSession,
-  private val cacheImpl: CoroutineScopeCacheImpl,
   deviceInfo: DeviceInfo
 ) : ConnectedDevice, AutoCloseable {
 
     private val deviceInfoStateFlow = MutableStateFlow(deviceInfo)
+
+    private val cacheImpl = CoroutineScopeCacheImpl(session.scope)
 
     override val cache: CoroutineScopeCache
         get() = cacheImpl
@@ -39,8 +41,7 @@ internal class ConnectedDeviceImpl(
 
     override fun close() {
         // Ensure last state we expose is "offline"
-        deviceInfoStateFlow.value =
-            deviceInfoStateFlow.value.copy(deviceState = DeviceState.OFFLINE)
+        deviceInfoStateFlow.update { it.copy(deviceState = DeviceState.OFFLINE) }
         cacheImpl.close()
     }
 
