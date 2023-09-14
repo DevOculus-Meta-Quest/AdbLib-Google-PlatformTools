@@ -109,6 +109,27 @@ internal class ShellCommandImpl<T>(
         return this
     }
 
+    override fun forceShellV2(): ShellCommand<T> {
+        this._allowShellV2 = true
+        this._allowLegacyExec = false
+        this._allowLegacyShell = false
+        return this
+    }
+
+    override fun forceLegacyExec(): ShellCommand<T> {
+        this._allowShellV2 = false
+        this._allowLegacyExec = true
+        this._allowLegacyShell = false
+        return this
+    }
+
+    override fun forceLegacyShell(): ShellCommand<T> {
+        this._allowShellV2 = false
+        this._allowLegacyExec = false
+        this._allowLegacyShell = true
+        return this
+    }
+
     override fun allowStripCrLfForLegacyShell(value: Boolean): ShellCommand<T> {
         this._allowStripCrLfForLegacyShell = value
         return this

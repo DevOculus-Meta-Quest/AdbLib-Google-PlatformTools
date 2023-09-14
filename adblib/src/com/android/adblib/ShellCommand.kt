@@ -110,6 +110,27 @@ interface ShellCommand<T> {
     fun allowLegacyShell(value: Boolean): ShellCommand<T>
 
     /**
+     * Force [execute] to using [AdbDeviceServices.shellV2].
+     *
+     * The default value is `false`.
+     */
+    fun forceShellV2(): ShellCommand<T>
+
+    /**
+     * Force [execute] to using [AdbDeviceServices.exec].
+     *
+     * The default value is `false`.
+     */
+    fun forceLegacyExec(): ShellCommand<T>
+
+    /**
+     * Force [execute] to using [AdbDeviceServices.shell].
+     *
+     * The default value is `false`.
+     */
+    fun forceLegacyShell(): ShellCommand<T>
+
+    /**
      * When [execute] falls back to using the [AdbDeviceServices.shell] service,
      * and when the device API <= 23, this option allows [execute] to automatically
      * convert '\r\n' newlines (as emitted by [AdbDeviceServices.shell]) to '\n'.
