@@ -1305,6 +1305,7 @@ class AdbDeviceServicesTest {
         // Act
         var effectiveProtocol = ShellCommand.Protocol.SHELL_V2
         deviceServices.shellCommand(deviceSelector, "getprop")
+            .allowLegacyExec(true)
             .withTextCollector()
             .withCommandOverride { command, protocol ->
                 effectiveProtocol = protocol
@@ -1346,6 +1347,7 @@ class AdbDeviceServicesTest {
         // Act
         var effectiveProtocol = ShellCommand.Protocol.SHELL_V2
         deviceServices.shellCommand(deviceSelector, "getprop")
+            .allowLegacyExec(true)
             .withTextCollector()
             .withCommandOutputTimeout(Duration.ofSeconds(2))
             .withCommandOverride { command, protocol ->
@@ -2525,6 +2527,26 @@ class AdbDeviceServicesTest {
 
         // Assert
         Assert.assertTrue(sessionOpened)
+    }
+
+    @Test
+    fun testShellCommandLegacyExecSupportedDefaultsToFalse(): Unit = runBlockingWithTimeout {
+        // Prepare
+        // "exec" is supported starting API 21
+        val fakeDevice = addFakeDevice(fakeAdb, 21)
+        val deviceSelector = DeviceSelector.fromSerialNumber(fakeDevice.deviceId)
+
+        // Act
+        var effectiveProtocol = ShellCommand.Protocol.SHELL_V2
+        deviceServices.shellCommand(deviceSelector, "getprop")
+            .withTextCollector()
+            .withCommandOverride { command, protocol ->
+                effectiveProtocol = protocol
+                command
+            }.execute().collect()
+
+        // Assert: "shell_v2" fallbacks to "shell" and not to "exec"
+        Assert.assertEquals(ShellCommand.Protocol.SHELL, effectiveProtocol)
     }
 
     /**

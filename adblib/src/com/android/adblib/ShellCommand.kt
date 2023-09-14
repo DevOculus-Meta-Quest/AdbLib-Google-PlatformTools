@@ -96,7 +96,8 @@ interface ShellCommand<T> {
      * Allows [execute] to fall back to [AdbDeviceServices.exec] if [AdbDeviceServices.shellV2]
      * is not available or not allowed.
      *
-     * The default value is `true`.
+     * The default value is `false`, because exec is not as general purpose as [allowShellV2]
+     * and [allowLegacyExec] (see [AdbDeviceServices.exec] for documentation).
      */
     fun allowLegacyExec(value: Boolean): ShellCommand<T>
 

@@ -49,7 +49,7 @@ internal class ShellCommandImpl<T>(
 
     private var _allowStripCrLfForLegacyShell: Boolean = true
     private var _allowLegacyShell: Boolean = true
-    private var _allowLegacyExec: Boolean = true
+    private var _allowLegacyExec: Boolean = false
     private var _allowShellV2: Boolean = true
     private var collector: ShellV2Collector<T>? = null
     private var commandTimeout: Duration = INFINITE_DURATION

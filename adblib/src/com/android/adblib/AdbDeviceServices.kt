@@ -106,12 +106,13 @@ interface AdbDeviceServices {
      * ("<device-transport>:exec" query) and emits the `stdout` output from of
      * the command to the [Flow].
      *
-     * See [shell] for a more detailed description. The main difference with [shell] is this
-     * service only captures `stdout` and ignores `stderr`, in addition to allowing binary
-     * data transfer without mangling data.
+     * See [shell] for a more detailed description. Unlike [shell], the [exec] service allows
+     * binary data transfer without mangling data.
      *
-     * This service has been available since API 21, but is **not** reported as an [AdbFeatures]
-     * from [AdbHostServices.features].
+     * [exec] is intended to be used for copying binary data in one direction (host -> device)
+     * or the other (device->host), but does not allow running general purpose shell commands.
+     * In particular, cancelling a command started via exec does not always terminate the process
+     * on the device if that command is not actively writing to stdout or reading from stdin.
      *
      * See [git commit](https://android.googlesource.com/platform/system/core/+/5d9d434efadf1c535c7fea634d5306e18c68ef1f)
      *
