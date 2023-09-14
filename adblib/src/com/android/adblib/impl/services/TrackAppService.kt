@@ -18,10 +18,10 @@ package com.android.adblib.impl.services
 import com.android.adblib.AdbChannel
 import com.android.adblib.AppProcessEntry
 import com.android.adblib.DeviceSelector
+import com.android.adblib.adbLogger
+import com.android.adblib.impl.AppProcessEntryListParser
 import com.android.adblib.impl.TimeoutTracker
 import com.android.adblib.impl.TimeoutTracker.Companion.INFINITE
-import com.android.adblib.impl.AppProcessEntryListParser
-import com.android.adblib.thisLogger
 import com.android.adblib.utils.ResizableBuffer
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.FlowCollector
@@ -37,7 +37,7 @@ internal class TrackAppService(private val serviceRunner: AdbServiceRunner) {
     private val host
         get() = serviceRunner.host
 
-    private val logger = thisLogger(host)
+    private val logger = adbLogger(host)
 
     private val parser = AppProcessEntryListParser()
 

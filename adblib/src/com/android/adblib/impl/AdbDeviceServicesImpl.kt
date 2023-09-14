@@ -30,6 +30,7 @@ import com.android.adblib.RootResult
 import com.android.adblib.ShellCollector
 import com.android.adblib.ShellV2Collector
 import com.android.adblib.SocketSpec
+import com.android.adblib.adbLogger
 import com.android.adblib.forwardTo
 import com.android.adblib.impl.StdoutByteBufferProcessor.DirectProcessor
 import com.android.adblib.impl.StdoutByteBufferProcessor.StripCrLfProcessor
@@ -38,7 +39,6 @@ import com.android.adblib.impl.services.OkayDataExpectation
 import com.android.adblib.impl.services.TrackAppService
 import com.android.adblib.impl.services.TrackJdwpService
 import com.android.adblib.readRemaining
-import com.android.adblib.thisLogger
 import com.android.adblib.utils.AdbProtocolUtils
 import com.android.adblib.utils.AdbProtocolUtils.bufferToByteDumpString
 import com.android.adblib.utils.ResizableBuffer
@@ -62,7 +62,7 @@ internal class AdbDeviceServicesImpl(
   private val unit: TimeUnit
 ) : AdbDeviceServices {
 
-    private val logger = thisLogger(session.host)
+    private val logger = adbLogger(session.host)
 
     private val host: AdbSessionHost
         get() = session.host

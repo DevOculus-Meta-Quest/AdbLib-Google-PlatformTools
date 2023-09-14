@@ -16,21 +16,21 @@
 package com.android.adblib.impl.services
 
 import com.android.adblib.AdbChannel
-import com.android.adblib.AdbServerChannelProvider
 import com.android.adblib.AdbDeviceFailResponseException
 import com.android.adblib.AdbFailResponseException
 import com.android.adblib.AdbHostFailResponseException
 import com.android.adblib.AdbHostServices
 import com.android.adblib.AdbInputChannel
-import com.android.adblib.AdbSessionHost
-import com.android.adblib.AdbSession
 import com.android.adblib.AdbOutputChannel
 import com.android.adblib.AdbProtocolErrorException
+import com.android.adblib.AdbServerChannelProvider
+import com.android.adblib.AdbSession
+import com.android.adblib.AdbSessionHost
 import com.android.adblib.DeviceSelector
+import com.android.adblib.adbLogger
 import com.android.adblib.createChannel
 import com.android.adblib.impl.TimeoutTracker
 import com.android.adblib.readExactly
-import com.android.adblib.thisLogger
 import com.android.adblib.utils.AdbProtocolUtils
 import com.android.adblib.utils.ResizableBuffer
 import com.android.adblib.utils.closeOnException
@@ -57,7 +57,7 @@ internal class AdbServiceRunner(
     val host : AdbSessionHost
         get() = session.host
 
-    private val logger = thisLogger(host)
+    private val logger = adbLogger(host)
 
     /**
      * Opens an [AdbChannel] and invokes a service on the ADB host, then waits for an OKAY/FAIL

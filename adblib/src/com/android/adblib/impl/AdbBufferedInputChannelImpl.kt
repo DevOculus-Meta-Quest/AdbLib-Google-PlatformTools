@@ -17,7 +17,7 @@ package com.android.adblib.impl
 
 import com.android.adblib.AdbInputChannel
 import com.android.adblib.AdbSession
-import com.android.adblib.thisLogger
+import com.android.adblib.adbLogger
 import java.io.BufferedInputStream
 import java.io.InputStream
 import java.nio.ByteBuffer
@@ -37,7 +37,7 @@ internal class AdbBufferedInputChannelImpl(
   bufferSize: Int = DEFAULT_BUFFER_SIZE
 ) : AdbInputChannel {
 
-    private val logger = thisLogger(session)
+    private val logger = adbLogger(session)
 
     /**
      * The bytes that were read from [input], starting at position `0` up to position

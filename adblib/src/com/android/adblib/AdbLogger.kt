@@ -112,22 +112,22 @@ fun AdbLogger.withMinLevel(minLevel: AdbLogger.Level): AdbLogger {
  * Creates an [AdbLogger] for the class of this instance.
  */
 @Suppress("unused") // "T" is reified
-inline fun <reified T : Any> T.thisLogger(loggerFactory: AdbLoggerFactory): AdbLogger {
+inline fun <reified T : Any> T.adbLogger(loggerFactory: AdbLoggerFactory): AdbLogger {
     return loggerFactory.createLogger(T::class.java)
 }
 
 /**
  * Creates an [AdbLogger] for the class of this instance.
  */
-inline fun <reified T : Any> T.thisLogger(host: AdbSessionHost): AdbLogger {
-    return thisLogger(host.loggerFactory)
+inline fun <reified T : Any> T.adbLogger(host: AdbSessionHost): AdbLogger {
+    return adbLogger(host.loggerFactory)
 }
 
 /**
  * Creates an [AdbLogger] for the class of this instance.
  */
-inline fun <reified T : Any> T.thisLogger(session: AdbSession): AdbLogger {
-    return thisLogger(session.host)
+inline fun <reified T : Any> T.adbLogger(session: AdbSession): AdbLogger {
+    return adbLogger(session.host)
 }
 
 /**

@@ -18,10 +18,10 @@ package com.android.adblib.impl.services
 import com.android.adblib.AdbChannel
 import com.android.adblib.DeviceSelector
 import com.android.adblib.ProcessIdList
+import com.android.adblib.adbLogger
 import com.android.adblib.impl.ProcessIdListParser
 import com.android.adblib.impl.TimeoutTracker
 import com.android.adblib.impl.TimeoutTracker.Companion.INFINITE
-import com.android.adblib.thisLogger
 import com.android.adblib.utils.AdbProtocolUtils
 import com.android.adblib.utils.ResizableBuffer
 import kotlinx.coroutines.flow.Flow
@@ -35,7 +35,7 @@ import java.util.concurrent.TimeUnit
  */
 internal class TrackJdwpService(private val serviceRunner: AdbServiceRunner) {
 
-    private val logger = thisLogger(host)
+    private val logger = adbLogger(host)
 
     private val parser = ProcessIdListParser()
 

@@ -607,7 +607,7 @@ class InputChannelShellCollector(
     bufferSize: Int = DEFAULT_BUFFER_SIZE
 ) : ShellV2Collector<InputChannelShellOutput>, ShellCollectorCapabilities {
 
-    private val logger = thisLogger(session)
+    private val logger = adbLogger(session)
 
     private val shellOutput = InputChannelShellOutputImpl(session, bufferSize)
 

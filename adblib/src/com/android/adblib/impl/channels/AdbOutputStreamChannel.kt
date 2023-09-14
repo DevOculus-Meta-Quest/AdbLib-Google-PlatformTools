@@ -2,7 +2,7 @@ package com.android.adblib.impl.channels
 
 import com.android.adblib.AdbOutputChannel
 import com.android.adblib.AdbSessionHost
-import com.android.adblib.thisLogger
+import com.android.adblib.adbLogger
 import java.io.OutputStream
 import java.nio.ByteBuffer
 import java.util.concurrent.TimeUnit
@@ -16,7 +16,7 @@ internal class AdbOutputStreamChannel(
   bufferSize: Int = DEFAULT_CHANNEL_BUFFER_SIZE
 ) : AdbOutputChannel {
 
-    private val logger = thisLogger(host)
+    private val logger = adbLogger(host)
 
     private val bytes = ByteArray(bufferSize)
 

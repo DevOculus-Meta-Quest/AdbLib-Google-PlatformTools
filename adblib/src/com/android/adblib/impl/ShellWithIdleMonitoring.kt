@@ -22,8 +22,9 @@ import com.android.adblib.DeviceSelector
 import com.android.adblib.ShellCollector
 import com.android.adblib.ShellV2Collector
 import com.android.adblib.SystemNanoTimeProvider
-import com.android.adblib.impl.ShellWithIdleMonitoring.HeartbeatRecorder.FlowEntry.*
-import com.android.adblib.thisLogger
+import com.android.adblib.adbLogger
+import com.android.adblib.impl.ShellWithIdleMonitoring.HeartbeatRecorder.FlowEntry.Closed
+import com.android.adblib.impl.ShellWithIdleMonitoring.HeartbeatRecorder.FlowEntry.Heartbeat
 import com.android.adblib.toSafeMillis
 import com.android.adblib.toSafeNanos
 import kotlinx.coroutines.CancellationException
@@ -118,7 +119,7 @@ internal abstract class ShellWithIdleMonitoring<T, TShellCollector>(
       private val delegate: ShellCollector<T>
     ) : ShellCollector<T> {
 
-        private val logger = thisLogger(host)
+        private val logger = adbLogger(host)
 
         override suspend fun start(collector: FlowCollector<T>) {
             logger.verbose { "start" }
@@ -150,7 +151,7 @@ internal abstract class ShellWithIdleMonitoring<T, TShellCollector>(
       private val delegate: ShellV2Collector<T>
     ) : ShellV2Collector<T> {
 
-        private val logger = thisLogger(host)
+        private val logger = adbLogger(host)
 
         override suspend fun start(collector: FlowCollector<T>) {
             logger.verbose { "start" }

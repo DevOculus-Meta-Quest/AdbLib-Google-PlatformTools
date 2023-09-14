@@ -3,12 +3,12 @@ package com.android.adblib.impl.services
 import com.android.adblib.AdbChannel
 import com.android.adblib.AdbHostServices.DeviceInfoFormat
 import com.android.adblib.DeviceList
+import com.android.adblib.adbLogger
 import com.android.adblib.impl.DeviceListParser
-import com.android.adblib.thisLogger
-import com.android.adblib.utils.AdbProtocolUtils
-import com.android.adblib.utils.ResizableBuffer
 import com.android.adblib.impl.TimeoutTracker
 import com.android.adblib.impl.TimeoutTracker.Companion.INFINITE
+import com.android.adblib.utils.AdbProtocolUtils
+import com.android.adblib.utils.ResizableBuffer
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.FlowCollector
 import kotlinx.coroutines.flow.flow
@@ -17,7 +17,7 @@ import java.util.concurrent.TimeUnit
 
 internal class TrackDevicesService(private val serviceRunner: AdbServiceRunner) {
 
-    private val logger = thisLogger(host)
+    private val logger = adbLogger(host)
 
     private val deviceParser = DeviceListParser()
     private val host

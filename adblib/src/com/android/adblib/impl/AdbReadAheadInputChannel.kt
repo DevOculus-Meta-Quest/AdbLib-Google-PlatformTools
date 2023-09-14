@@ -17,7 +17,7 @@ package com.android.adblib.impl
 
 import com.android.adblib.AdbInputChannel
 import com.android.adblib.AdbSession
-import com.android.adblib.thisLogger
+import com.android.adblib.adbLogger
 import com.android.adblib.utils.createChildScope
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
@@ -35,7 +35,7 @@ internal class AdbReadAheadInputChannel(
     bufferSize: Int = DEFAULT_BUFFER_SIZE
 ) : AdbInputChannel {
 
-    private val logger = thisLogger(session)
+    private val logger = adbLogger(session)
 
     /**
      * The [AdbPipedInputChannelImpl] used to concurrently store read-ahead data as well as

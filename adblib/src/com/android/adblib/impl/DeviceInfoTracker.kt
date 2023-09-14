@@ -19,9 +19,9 @@ import com.android.adblib.AdbFailResponseException
 import com.android.adblib.AdbSession
 import com.android.adblib.DeviceInfo
 import com.android.adblib.DeviceSelector
+import com.android.adblib.adbLogger
 import com.android.adblib.isTrackerConnecting
 import com.android.adblib.isTrackerDisconnected
-import com.android.adblib.thisLogger
 import com.android.adblib.trackDeviceInfo
 import com.android.adblib.trackDevices
 import com.android.adblib.utils.SuspendingLazy
@@ -38,7 +38,7 @@ internal class DeviceInfoTracker(
   private val device: DeviceSelector
 ) {
 
-    private val logger = thisLogger(session.host)
+    private val logger = adbLogger(session.host)
 
     private val deviceSerialNumber = SuspendingLazy {
         try {

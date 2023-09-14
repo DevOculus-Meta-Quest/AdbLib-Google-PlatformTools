@@ -16,6 +16,7 @@
 package com.android.adblib
 
 import com.android.adblib.AdbLibProperties.TRACK_DEVICES_RETRY_DELAY
+import com.android.adblib.AdbSession.Companion.create
 import com.android.adblib.CoroutineScopeCache.Key
 import com.android.adblib.impl.AdbSessionImpl
 import com.android.adblib.impl.ConnectedDevicesTrackerImpl
@@ -340,7 +341,7 @@ fun AdbSession.createDeviceScope(device: DeviceSelector): CoroutineScope {
                 session.trackDeviceInfo(device).collect()
             } finally {
                 val msg = "Device $device has been disconnected, cancelling job"
-                thisLogger(session.host).debug { msg }
+                adbLogger(session.host).debug { msg }
                 deviceScope.cancel(CancellationException(msg))
             }
         }

@@ -16,13 +16,13 @@
 package com.android.adblib.impl
 
 import com.android.adblib.AdbChannel
-import com.android.adblib.AdbSessionHost
 import com.android.adblib.AdbOutputChannel
 import com.android.adblib.AdbProtocolErrorException
+import com.android.adblib.AdbSessionHost
 import com.android.adblib.DeviceSelector
 import com.android.adblib.SyncProgress
+import com.android.adblib.adbLogger
 import com.android.adblib.impl.services.AdbServiceRunner
-import com.android.adblib.thisLogger
 import com.android.adblib.utils.AdbProtocolUtils
 import com.android.adblib.withPrefix
 import kotlinx.coroutines.withContext
@@ -39,7 +39,7 @@ internal class SyncRecvHandler(
     private val deviceChannel: AdbChannel
 ) {
 
-    private val logger = thisLogger(host).withPrefix("device:$device,sync:RECV - ")
+    private val logger = adbLogger(host).withPrefix("device:$device,sync:RECV - ")
 
     private val host: AdbSessionHost
         get() = serviceRunner.host

@@ -23,8 +23,8 @@ import com.android.adblib.AdbSession
 import com.android.adblib.AdbSessionHost
 import com.android.adblib.ClosedSessionException
 import com.android.adblib.CoroutineScopeCache
+import com.android.adblib.adbLogger
 import com.android.adblib.impl.channels.AdbChannelFactoryImpl
-import com.android.adblib.thisLogger
 import com.android.adblib.utils.createChildScope
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
@@ -39,7 +39,7 @@ internal class AdbSessionImpl(
     private val connectionTimeoutMillis: Long
 ) : AdbSession {
 
-    private val logger = thisLogger(host)
+    private val logger = adbLogger(host)
 
     private val id = sessionId.incrementAndGet()
 

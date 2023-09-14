@@ -2,8 +2,8 @@ package com.android.adblib.impl.channels
 
 import com.android.adblib.AdbChannel
 import com.android.adblib.AdbSessionHost
+import com.android.adblib.adbLogger
 import com.android.adblib.impl.remainingTimeoutToString
-import com.android.adblib.thisLogger
 import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.withContext
 import java.io.IOException
@@ -20,7 +20,7 @@ internal class AdbSocketChannelImpl(
     private val socketChannel: AsynchronousSocketChannel
 ) : AdbChannel {
 
-    private val logger = thisLogger(host)
+    private val logger = adbLogger(host)
 
     private val channelWriteHandler = object : ChannelWriteHandler(host, socketChannel) {
         override val supportsTimeout: Boolean

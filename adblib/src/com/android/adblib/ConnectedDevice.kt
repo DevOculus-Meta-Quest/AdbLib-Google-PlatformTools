@@ -127,7 +127,7 @@ fun <R> ConnectedDevice.flowWhenOnline(
             transform(device)
         }
         .retryWhen { throwable, _ ->
-            device.thisLogger(session).warn(
+            device.adbLogger(session).warn(
                 throwable,
                 "Device $device flow failed with error '${throwable.message}', " +
                         "retrying in ${retryDelay.seconds} sec"

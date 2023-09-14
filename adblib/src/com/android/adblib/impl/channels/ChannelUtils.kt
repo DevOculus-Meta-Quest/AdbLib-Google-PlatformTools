@@ -16,7 +16,7 @@
 package com.android.adblib.impl.channels
 
 import com.android.adblib.AdbSessionHost
-import com.android.adblib.thisLogger
+import com.android.adblib.adbLogger
 import com.android.adblib.utils.closeOnException
 import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.CancellationException
@@ -157,7 +157,7 @@ private inline fun <T> wrapContinuationBlock(
  * for the initial code this implementation is based on.
  */
 private fun Closeable.closeOnCancel(host: AdbSessionHost, cont: CancellableContinuation<*>) {
-    val logger = thisLogger(host)
+    val logger = adbLogger(host)
     try {
         cont.invokeOnCancellation {
             logger.debug { "Closing resource because suspended coroutine has been cancelled" }

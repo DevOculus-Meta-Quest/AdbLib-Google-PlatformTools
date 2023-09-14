@@ -23,12 +23,12 @@ import com.android.adblib.DeviceProperties
 import com.android.adblib.DeviceProperty
 import com.android.adblib.DevicePropertyNames.RO_BUILD_VERSION_SDK
 import com.android.adblib.DeviceSelector
-import com.android.adblib.ShellCommandOutputElement
-import com.android.adblib.availableFeatures
-import com.android.adblib.thisLogger
 import com.android.adblib.LineShellCollector
 import com.android.adblib.LineShellV2Collector
+import com.android.adblib.ShellCommandOutputElement
 import com.android.adblib.TextShellCollector
+import com.android.adblib.adbLogger
+import com.android.adblib.availableFeatures
 import com.android.adblib.utils.rethrowCancellation
 import com.android.adblib.utils.toImmutableMap
 import kotlinx.coroutines.flow.first
@@ -41,7 +41,7 @@ class DevicePropertiesImpl(
     val device: DeviceSelector
 ) : DeviceProperties {
 
-    private val logger = thisLogger(deviceServices.session)
+    private val logger = adbLogger(deviceServices.session)
 
     private val allReadonlyKey = CoroutineScopeCache.Key<Map<String, String>>("allReadonly")
 
@@ -90,7 +90,7 @@ class DevicePropertiesImpl(
     override suspend fun api(default: Int): Int {
         val api = allReadonly()[RO_BUILD_VERSION_SDK]
         if (api == null) {
-            thisLogger(this.session).info {
+            adbLogger(this.session).info {
                 "Property '$RO_BUILD_VERSION_SDK' not found, returning $default instead"
             }
             return default
@@ -98,7 +98,7 @@ class DevicePropertiesImpl(
         return try {
             api.toInt()
         } catch (e: NumberFormatException) {
-            thisLogger(this.session).info {
+            adbLogger(this.session).info {
                 "Property '$RO_BUILD_VERSION_SDK' (\"$api\") is not a number, returning $default instead"
             }
             return default

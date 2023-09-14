@@ -18,7 +18,7 @@ package com.android.adblib.impl
 import com.android.adblib.AdbPipedInputChannel
 import com.android.adblib.AdbPipedOutputChannel
 import com.android.adblib.AdbSession
-import com.android.adblib.thisLogger
+import com.android.adblib.adbLogger
 import com.android.adblib.utils.CircularByteBuffer
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -33,7 +33,7 @@ internal class AdbPipedInputChannelImpl(
     bufferSize: Int = DEFAULT_BUFFER_SIZE
 ) : AdbPipedInputChannel {
 
-    private val logger = thisLogger(session)
+    private val logger = adbLogger(session)
 
     /**
      * Guard access to [circularBuffer]
@@ -197,7 +197,7 @@ internal class AdbPipedInputChannelImpl(
         val input: AdbPipedInputChannelImpl
     ) : AdbPipedOutputChannel {
 
-        private val logger = thisLogger(session)
+        private val logger = adbLogger(session)
 
         override suspend fun error(throwable: Throwable) {
             logger.verbose { "error($throwable)" }

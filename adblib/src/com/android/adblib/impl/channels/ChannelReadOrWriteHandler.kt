@@ -18,8 +18,8 @@ package com.android.adblib.impl.channels
 import com.android.adblib.AdbInputChannel
 import com.android.adblib.AdbOutputChannel
 import com.android.adblib.AdbSessionHost
+import com.android.adblib.adbLogger
 import com.android.adblib.impl.TimeoutTracker
-import com.android.adblib.thisLogger
 import kotlinx.coroutines.CancellableContinuation
 import java.io.EOFException
 import java.nio.ByteBuffer
@@ -52,7 +52,7 @@ internal abstract class ChannelReadOrWriteHandler protected constructor(
     private val nioChannel: Channel
 ) {
 
-    private val logger = thisLogger(host)
+    private val logger = adbLogger(host)
 
     private val completionHandler = object : ContinuationCompletionHandler<Int>() {
         override fun completed(result: Int, continuation: CancellableContinuation<Int>) {

@@ -20,7 +20,7 @@ import com.android.adblib.AdbSession
 import com.android.adblib.DeviceList
 import com.android.adblib.ErrorLine
 import com.android.adblib.TrackedDeviceList
-import com.android.adblib.thisLogger
+import com.android.adblib.adbLogger
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -38,7 +38,7 @@ internal class SessionDeviceTracker(
   private val retryDelay: Duration
 ) {
 
-    private val logger = thisLogger(session.host)
+    private val logger = adbLogger(session.host)
 
     /**
      * The [StateFlow] of [TrackedDeviceList], created lazily.

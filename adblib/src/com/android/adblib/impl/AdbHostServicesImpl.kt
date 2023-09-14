@@ -1,11 +1,11 @@
 package com.android.adblib.impl
 
-import com.android.adblib.AdbServerChannelProvider
 import com.android.adblib.AdbHostServices
 import com.android.adblib.AdbHostServices.DeviceInfoFormat
-import com.android.adblib.AdbSessionHost
-import com.android.adblib.AdbSession
 import com.android.adblib.AdbProtocolErrorException
+import com.android.adblib.AdbServerChannelProvider
+import com.android.adblib.AdbSession
+import com.android.adblib.AdbSessionHost
 import com.android.adblib.DeviceAddress
 import com.android.adblib.DeviceList
 import com.android.adblib.DeviceSelector
@@ -17,10 +17,10 @@ import com.android.adblib.PairResult
 import com.android.adblib.SocketSpec
 import com.android.adblib.WaitForState
 import com.android.adblib.WaitForTransport
+import com.android.adblib.adbLogger
 import com.android.adblib.impl.services.AdbServiceRunner
 import com.android.adblib.impl.services.OkayDataExpectation
 import com.android.adblib.impl.services.TrackDevicesService
-import com.android.adblib.thisLogger
 import kotlinx.coroutines.flow.Flow
 import java.io.EOFException
 import java.util.concurrent.TimeUnit
@@ -34,7 +34,7 @@ internal class AdbHostServicesImpl(
 
     private val host: AdbSessionHost
         get() = session.host
-    private val logger = thisLogger(session)
+    private val logger = adbLogger(session)
     private val serviceRunner = AdbServiceRunner(session, channelProvider)
     private val deviceParser = DeviceListParser()
     private val mdnsCheckParser = MdnsCheckParser()

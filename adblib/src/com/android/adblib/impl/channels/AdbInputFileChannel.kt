@@ -17,7 +17,7 @@ package com.android.adblib.impl.channels
 
 import com.android.adblib.AdbInputChannel
 import com.android.adblib.AdbSessionHost
-import com.android.adblib.thisLogger
+import com.android.adblib.adbLogger
 import kotlinx.coroutines.CancellableContinuation
 import java.nio.ByteBuffer
 import java.nio.channels.AsynchronousFileChannel
@@ -33,7 +33,7 @@ internal class AdbInputFileChannel(
     private val fileChannel: AsynchronousFileChannel
 ) : AdbInputChannel {
 
-    private val logger = thisLogger(host)
+    private val logger = adbLogger(host)
 
     private var filePosition = 0L
 

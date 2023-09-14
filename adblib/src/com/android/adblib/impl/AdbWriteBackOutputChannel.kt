@@ -20,7 +20,7 @@ import com.android.adblib.AdbInputChannel
 import com.android.adblib.AdbOutputChannel
 import com.android.adblib.AdbPipedInputChannel
 import com.android.adblib.AdbSession
-import com.android.adblib.thisLogger
+import com.android.adblib.adbLogger
 import com.android.adblib.utils.createChildScope
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.Job
@@ -42,7 +42,7 @@ internal class AdbWriteBackOutputChannel(
     bufferSize: Int = DEFAULT_BUFFER_SIZE
 ) : AdbBufferedOutputChannel {
 
-    private val logger = thisLogger(session)
+    private val logger = adbLogger(session)
 
     /**
      * The [AdbPipedInputChannel] used to concurrently store write-back from [write] operations.
@@ -87,7 +87,7 @@ internal class AdbWriteBackOutputChannel(
         bufferSize: Int
     ) : AutoCloseable {
 
-        private val logger = thisLogger(session)
+        private val logger = adbLogger(session)
 
         /**
          * The scope of the write-back coroutine.
