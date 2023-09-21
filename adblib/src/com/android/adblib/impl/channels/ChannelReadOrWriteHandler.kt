@@ -296,7 +296,7 @@ internal abstract class ChannelReadHandler(
 }
 
 /**
- * Provides services to [write] data from any NIO [Channel] that supports asynchronous
+ * Provides services to [writeBuffer] data from any NIO [Channel] that supports asynchronous
  * writes, e.g. [AsynchronousFileChannel] or [AsynchronousSocketChannel].
  */
 internal abstract class ChannelWriteHandler(
@@ -308,10 +308,10 @@ internal abstract class ChannelWriteHandler(
      * Writes up to [ByteBuffer.remaining] bytes to the underlying channel, returning
      * the number of bytes successfully written.
      *
-     * @see AdbOutputChannel.write
+     * @see AdbOutputChannel.writeBuffer
      */
-    suspend fun write(buffer: ByteBuffer, timeout: Long, unit: TimeUnit): Int {
-        return run(buffer, timeout, unit)
+    suspend inline fun writeBuffer(buffer: ByteBuffer, timeout: Long, unit: TimeUnit) {
+        run(buffer, timeout, unit)
     }
 
     /**
@@ -319,7 +319,7 @@ internal abstract class ChannelWriteHandler(
      *
      * @see AdbOutputChannel.writeExactly
      */
-    suspend fun writeExactly(buffer: ByteBuffer, timeout: Long, unit: TimeUnit) {
+    suspend inline fun writeExactly(buffer: ByteBuffer, timeout: Long, unit: TimeUnit) {
         runExactly(buffer, timeout, unit)
     }
 

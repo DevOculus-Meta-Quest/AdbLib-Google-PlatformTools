@@ -46,18 +46,18 @@ internal class AdbWriteBackOutputChannel(
     private val logger = adbLogger(session)
 
     /**
-     * The [AdbPipedInputChannel] used to concurrently store write-back from [write] operations.
+     * The [AdbPipedInputChannel] used to concurrently store write-back from [writeBuffer] operations.
      */
     private val pipe = session.channelFactory.createPipedChannel(bufferSize)
 
     private val writeBackWorker = WriteBackWorker(session, pipe, output, bufferSize)
 
-    override suspend fun write(buffer: ByteBuffer, timeout: Long, unit: TimeUnit): Int {
+    override suspend fun writeBuffer(buffer: ByteBuffer, timeout: Long, unit: TimeUnit) {
         // We use the "write-back" context to ensure any write failure in the "write-back"
         // coroutine cancels this "write" operation with the "write-back" failure.
-        return writeBackWorker.withWriteBackContext {
-            pipe.pipeSource.write(buffer, timeout, unit).also {
-                logger.verbose { "write: Wrote $it bytes to pipe '$pipe'" }
+        writeBackWorker.withWriteBackContext {
+            pipe.pipeSource.writeBuffer(buffer, timeout, unit).also { count ->
+                logger.verbose { "write: Wrote $count bytes to pipe '$pipe'" }
             }
         }
     }

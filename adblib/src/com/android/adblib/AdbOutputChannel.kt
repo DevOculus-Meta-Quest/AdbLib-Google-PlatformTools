@@ -23,22 +23,22 @@ import java.util.concurrent.TimeoutException
 
 interface AdbOutputChannel : AutoCloseable {
     /**
-     * Sends up to [ByteBuffer.remaining] bytes contained in the [buffer][ByteBuffer] parameter, i.e. some
-     * bytes from the buffer [position][ByteBuffer.position] to the [limit][ByteBuffer.limit].
-     *
-     * Returns the number of bytes written on success. The return value is zero if and only if
-     * [ByteBuffer.remaining()] is zero.
+     * Writes up to [ByteBuffer.remaining] bytes from [buffer] to the underlying channel, updating
+     * [ByteBuffer.position] to match the number of bytes written.
      *
      * If a failure occurs, an [java.io.IOException] is thrown, and the [ByteBuffer] state
      * is undefined (i.e. some bytes may have been written, but not all).
      *
      * Throws a [TimeoutException] in case the data cannot be written before the timeout expires.
      */
-    suspend fun write(buffer: ByteBuffer, timeout: Long = Long.MAX_VALUE, unit: TimeUnit = TimeUnit.MILLISECONDS): Int
+    suspend fun writeBuffer(
+        buffer: ByteBuffer,
+        timeout: Long = Long.MAX_VALUE,
+        unit: TimeUnit = TimeUnit.MILLISECONDS
+    )
 
     /**
-     * Sends all [ByteBuffer.remaining] bytes contained in the [buffer][ByteBuffer] parameter, i.e. all
-     * bytes from the buffer [position][ByteBuffer.position] to the [limit][ByteBuffer.limit].
+     * Writes all [ByteBuffer.remaining] bytes from [buffer] to the underlying channel.
      *
      * If successful, the buffer position is equal to the buffer limit.
      *
@@ -47,7 +47,11 @@ interface AdbOutputChannel : AutoCloseable {
      *
      * Throws a [TimeoutException] in case the data cannot be written before the timeout expires.
      */
-    suspend fun writeExactly(buffer: ByteBuffer, timeout: Long = Long.MAX_VALUE, unit: TimeUnit = TimeUnit.MILLISECONDS) {
+    suspend fun writeExactly(
+        buffer: ByteBuffer,
+        timeout: Long = Long.MAX_VALUE,
+        unit: TimeUnit = TimeUnit.MILLISECONDS
+    ) {
         val tracker = TimeoutTracker.fromTimeout(unit, timeout)
         tracker.throwIfElapsed()
 
@@ -59,6 +63,28 @@ interface AdbOutputChannel : AutoCloseable {
             }
         }
     }
+}
+
+/**
+ * Writes up to [ByteBuffer.remaining] bytes from [buffer] to the underlying channel, updating
+ * [ByteBuffer.position] to match the number of bytes written.
+ *
+ * Returns the number of bytes written on success. The return value is zero if and only if
+ * [ByteBuffer.remaining] is zero.
+ *
+ * If a failure occurs, an [java.io.IOException] is thrown, and the [ByteBuffer] state
+ * is undefined (i.e. some bytes may have been written, but not all).
+ *
+ * Throws a [TimeoutException] in case the data cannot be written before the timeout expires.
+ */
+suspend inline fun AdbOutputChannel.write(
+    buffer: ByteBuffer,
+    timeout: Long = Long.MAX_VALUE,
+    unit: TimeUnit = TimeUnit.MILLISECONDS
+): Int {
+    val remainingBefore = buffer.remaining()
+    writeBuffer(buffer, timeout, unit)
+    return remainingBefore - buffer.remaining()
 }
 
 internal suspend fun AdbOutputChannel.write(buffer: ByteBuffer, timeout: TimeoutTracker) : Int {

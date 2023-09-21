@@ -1829,7 +1829,7 @@ class AdbDeviceServicesTest {
         )
         val progress = TestSyncProgress()
         val outputStream = ByteArrayOutputStream()
-        val outputChannel = AdbOutputStreamChannel(deviceServices.session.host, outputStream)
+        val outputChannel = AdbOutputStreamChannel(deviceServices.session, outputStream)
 
         // Act
         deviceServices.syncRecv(
@@ -1868,7 +1868,7 @@ class AdbDeviceServicesTest {
         )
         val progress = TestSyncProgress()
         val outputStream = ByteArrayOutputStream()
-        val outputChannel = AdbOutputStreamChannel(deviceServices.session.host, outputStream)
+        val outputChannel = AdbOutputStreamChannel(deviceServices.session, outputStream)
 
         val filePath2 = "/sdcard/foo/bar2.bin"
         val fileBytes2 = createFileBytes(12)
@@ -1884,7 +1884,7 @@ class AdbDeviceServicesTest {
         )
         val progress2 = TestSyncProgress()
         val outputStream2 = ByteArrayOutputStream()
-        val outputChannel2 = AdbOutputStreamChannel(deviceServices.session.host, outputStream2)
+        val outputChannel2 = AdbOutputStreamChannel(deviceServices.session, outputStream2)
 
         // Act
         deviceServices.sync(deviceSelector).use {
@@ -1931,7 +1931,7 @@ class AdbDeviceServicesTest {
 
         val recvProgress = TestSyncProgress()
         val outputStream = ByteArrayOutputStream()
-        val outputChannel = AdbOutputStreamChannel(deviceServices.session.host, outputStream)
+        val outputChannel = AdbOutputStreamChannel(deviceServices.session, outputStream)
 
         // Act
         deviceServices.sync(deviceSelector).use {
@@ -1983,7 +1983,7 @@ class AdbDeviceServicesTest {
         val filePath = "/sdcard/foo/bar.bin"
         val progress = TestSyncProgress()
         val outputStream = ByteArrayOutputStream()
-        val outputChannel = AdbOutputStreamChannel(deviceServices.session.host, outputStream)
+        val outputChannel = AdbOutputStreamChannel(deviceServices.session, outputStream)
 
         // Act
         exceptionRule.expect(AdbFailResponseException::class.java)
@@ -2023,7 +2023,7 @@ class AdbDeviceServicesTest {
             }
         }
         val outputStream = ByteArrayOutputStream()
-        val outputChannel = AdbOutputStreamChannel(deviceServices.session.host, outputStream)
+        val outputChannel = AdbOutputStreamChannel(deviceServices.session, outputStream)
 
         // Act
         exceptionRule.expect(MyTestException::class.java)
@@ -2059,7 +2059,7 @@ class AdbDeviceServicesTest {
         )
         val progress = TestSyncProgress()
         val outputChannel = object : AdbOutputChannel {
-            override suspend fun write(buffer: ByteBuffer, timeout: Long, unit: TimeUnit): Int {
+            override suspend fun writeBuffer(buffer: ByteBuffer, timeout: Long, unit: TimeUnit) {
                 throw MyTestException("this stream simulates an error writing to local storage")
             }
 

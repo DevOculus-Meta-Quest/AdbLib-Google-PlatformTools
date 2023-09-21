@@ -27,13 +27,11 @@ internal class ByteBufferAdbOutputChannelImpl(
 
     private var closed = false
 
-    override suspend fun write(buffer: ByteBuffer, timeout: Long, unit: TimeUnit): Int {
+    override suspend fun writeBuffer(buffer: ByteBuffer, timeout: Long, unit: TimeUnit) {
         if (closed) {
             throw ClosedChannelException()
         }
-        val count = buffer.remaining()
         workBuffer.appendBytes(buffer)
-        return count
     }
 
     override fun close() {

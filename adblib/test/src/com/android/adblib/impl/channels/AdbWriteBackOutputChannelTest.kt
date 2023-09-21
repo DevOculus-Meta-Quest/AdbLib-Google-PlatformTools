@@ -19,6 +19,7 @@ import com.android.adblib.AdbOutputChannel
 import com.android.adblib.testingutils.CloseablesRule
 import com.android.adblib.testingutils.CoroutineTestUtils.runBlockingWithTimeout
 import com.android.adblib.testingutils.TestingAdbSession
+import com.android.adblib.write
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
@@ -58,13 +59,12 @@ class AdbWriteBackOutputChannelTest {
             var length: Int = 0
                 private set
 
-            override suspend fun write(buffer: ByteBuffer, timeout: Long, unit: TimeUnit): Int {
+            override suspend fun writeBuffer(buffer: ByteBuffer, timeout: Long, unit: TimeUnit) {
                 val count = buffer.remaining()
                 repeat(count) {
                     buffer.get()
                 }
                 length += count
-                return length
             }
 
             override fun close() {
@@ -107,7 +107,7 @@ class AdbWriteBackOutputChannelTest {
             var length: Int = 0
                 private set
 
-            override suspend fun write(buffer: ByteBuffer, timeout: Long, unit: TimeUnit): Int {
+            override suspend fun writeBuffer(buffer: ByteBuffer, timeout: Long, unit: TimeUnit) {
                 callCount++
                 if (callCount == 3) {
                     throw IOException("Fake I/O error")
@@ -117,7 +117,6 @@ class AdbWriteBackOutputChannelTest {
                     buffer.get()
                 }
                 length += count
-                return length
             }
 
             override fun close() {
@@ -150,7 +149,7 @@ class AdbWriteBackOutputChannelTest {
         val writeMutex = Mutex()
         writeMutex.lock()
         val output = object: AdbOutputChannel {
-            override suspend fun write(buffer: ByteBuffer, timeout: Long, unit: TimeUnit): Int {
+            override suspend fun writeBuffer(buffer: ByteBuffer, timeout: Long, unit: TimeUnit) {
                 writeMutex.lock() // Wait for "shutdown" to be called
                 throw IOException("Fake I/O error")
             }
@@ -182,10 +181,9 @@ class AdbWriteBackOutputChannelTest {
         val output = object: AdbOutputChannel {
             var closeCalled = false
 
-            override suspend fun write(buffer: ByteBuffer, timeout: Long, unit: TimeUnit): Int {
+            override suspend fun writeBuffer(buffer: ByteBuffer, timeout: Long, unit: TimeUnit) {
                 // This delay should be cancelled right away by `writeBackChannel.close`
                 delay(1_000)
-                return 0
             }
 
             override fun close() {
@@ -219,7 +217,7 @@ class AdbWriteBackOutputChannelTest {
             var length: Int = 0
                 private set
 
-            override suspend fun write(buffer: ByteBuffer, timeout: Long, unit: TimeUnit): Int {
+            override suspend fun writeBuffer(buffer: ByteBuffer, timeout: Long, unit: TimeUnit) {
                 callCount++
                 if (callCount == 3) {
                     cancel("Fake I/O error")
@@ -229,7 +227,6 @@ class AdbWriteBackOutputChannelTest {
                     buffer.get()
                 }
                 length += count
-                return length
             }
 
             override fun close() {

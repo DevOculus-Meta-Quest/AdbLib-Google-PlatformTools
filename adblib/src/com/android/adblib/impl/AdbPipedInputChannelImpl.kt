@@ -194,7 +194,7 @@ internal class AdbPipedInputChannelImpl(
     }
 
     private class AdbPipedOutputChannelImpl(
-        session: AdbSession,
+        private val session: AdbSession,
         val input: AdbPipedInputChannelImpl
     ) : AdbPipedOutputChannel {
 
@@ -205,9 +205,9 @@ internal class AdbPipedInputChannelImpl(
             input.receiveError(throwable)
         }
 
-        override suspend fun write(buffer: ByteBuffer, timeout: Long, unit: TimeUnit): Int {
+        override suspend fun writeBuffer(buffer: ByteBuffer, timeout: Long, unit: TimeUnit) {
             logger.verbose { "write(${buffer.remaining()})" }
-            return withTimeout(unit.toMillis(timeout)) {
+            session.withErrorTimeout(timeout, unit) {
                 input.receive(buffer)
             }
         }

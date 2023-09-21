@@ -64,11 +64,11 @@ internal class InputChannelShellOutputImpl(
     override val exitCode: StateFlow<Int?> = exitCodeFlow.asStateFlow()
 
     suspend fun writeStdout(stdout: ByteBuffer) {
-        stdoutOutputPipe.write(stdout)
+        stdoutOutputPipe.writeExactly(stdout)
     }
 
     suspend fun writeStderr(stderr: ByteBuffer) {
-        stderrOutputPipe.write(stderr)
+        stderrOutputPipe.writeExactly(stderr)
     }
 
     suspend fun end(exitCode: Int) {

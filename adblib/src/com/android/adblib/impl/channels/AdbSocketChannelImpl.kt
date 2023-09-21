@@ -99,8 +99,8 @@ internal class AdbSocketChannelImpl(
         channelReadHandler.readExactly(buffer, timeout, unit)
     }
 
-    override suspend fun write(buffer: ByteBuffer, timeout: Long, unit: TimeUnit): Int {
-        return channelWriteHandler.write(buffer, timeout, unit)
+    override suspend fun writeBuffer(buffer: ByteBuffer, timeout: Long, unit: TimeUnit) {
+        channelWriteHandler.writeBuffer(buffer, timeout, unit)
     }
 
     override suspend fun writeExactly(buffer: ByteBuffer, timeout: Long, unit: TimeUnit) {
