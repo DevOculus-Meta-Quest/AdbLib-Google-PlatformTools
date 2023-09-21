@@ -35,7 +35,7 @@ internal class AdbServerSocketImpl(
     private val serverSocketChannel: AsynchronousServerSocketChannel
 ) : AdbServerSocket {
 
-    private val acceptCompletionHandler = ContinuationCompletionHandler<AsynchronousSocketChannel>()
+    private val acceptCompletionHandler = TypedContinuationCompletionHandler<AsynchronousSocketChannel>()
 
     override suspend fun localAddress(): InetSocketAddress? {
         return withContext(host.ioDispatcher) {

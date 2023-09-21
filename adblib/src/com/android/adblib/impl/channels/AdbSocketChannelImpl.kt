@@ -30,7 +30,7 @@ internal class AdbSocketChannelImpl(
             buffer: ByteBuffer,
             timeout: Long,
             unit: TimeUnit,
-            continuation: CancellableContinuation<Int>,
+            continuation: CancellableContinuation<Unit>,
             completionHandler: ContinuationCompletionHandler<Int>
         ) {
             socketChannel.write(buffer, timeout, unit, continuation, completionHandler)
@@ -45,7 +45,7 @@ internal class AdbSocketChannelImpl(
             buffer: ByteBuffer,
             timeout: Long,
             unit: TimeUnit,
-            continuation: CancellableContinuation<Int>,
+            continuation: CancellableContinuation<Unit>,
             completionHandler: ContinuationCompletionHandler<Int>
         ) {
             socketChannel.read(buffer, timeout, unit, continuation, completionHandler)
@@ -86,7 +86,7 @@ internal class AdbSocketChannelImpl(
             }
         }
 
-        suspendChannelCoroutine<Void?>(host, socketChannel, timeout, unit) { continuation ->
+        suspendChannelCoroutine<Unit>(host, socketChannel, timeout, unit) { continuation ->
             socketChannel.connect(address, continuation, connectCompletionHandler)
         }
     }

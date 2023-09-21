@@ -45,7 +45,7 @@ internal class AdbOutputFileChannel(
             buffer: ByteBuffer,
             timeout: Long,
             unit: TimeUnit,
-            continuation: CancellableContinuation<Int>,
+            continuation: CancellableContinuation<Unit>,
             completionHandler: ContinuationCompletionHandler<Int>
         ) {
             // Note: Timeout is handled by base class because [supportsTimeout] is false

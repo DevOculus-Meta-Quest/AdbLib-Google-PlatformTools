@@ -20,7 +20,29 @@ import java.nio.channels.CompletionHandler
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
-internal open class ContinuationCompletionHandler<T> : CompletionHandler<T, CancellableContinuation<T>> {
+internal open class ContinuationCompletionHandler<T> : CompletionHandler<T, CancellableContinuation<Unit>> {
+
+    open fun completed(result: T) {
+    }
+
+    override fun completed(result: T, continuation: CancellableContinuation<Unit>) {
+        try {
+            completed(result)
+        } finally {
+            continuation.resume(Unit)
+        }
+    }
+
+    open fun wrapError(e: Throwable): Throwable {
+        return e
+    }
+
+    override fun failed(e: Throwable, continuation: CancellableContinuation<Unit>) {
+        continuation.resumeWithException(wrapError(e))
+    }
+}
+
+internal open class TypedContinuationCompletionHandler<T> : CompletionHandler<T, CancellableContinuation<T>> {
 
     open fun completed(result: T) {
     }

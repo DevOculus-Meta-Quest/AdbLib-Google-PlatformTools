@@ -55,7 +55,7 @@ internal abstract class ChannelReadOrWriteHandler protected constructor(
     private val logger = adbLogger(host)
 
     private val completionHandler = object : ContinuationCompletionHandler<Int>() {
-        override fun completed(result: Int, continuation: CancellableContinuation<Int>) {
+        override fun completed(result: Int, continuation: CancellableContinuation<Unit>) {
             completionHandlerCompleted(result, continuation)
         }
 
@@ -133,7 +133,7 @@ internal abstract class ChannelReadOrWriteHandler protected constructor(
         buffer: ByteBuffer,
         timeout: Long,
         unit: TimeUnit,
-        continuation: CancellableContinuation<Int>,
+        continuation: CancellableContinuation<Unit>,
         completionHandler: ContinuationCompletionHandler<Int>
     )
 
@@ -143,10 +143,10 @@ internal abstract class ChannelReadOrWriteHandler protected constructor(
      */
     protected abstract fun asyncReadOrWriteCompleted(byteCount: Int)
 
-    protected suspend fun run(buffer: ByteBuffer, timeout: Long, unit: TimeUnit): Int {
+    protected suspend fun run(buffer: ByteBuffer, timeout: Long, unit: TimeUnit) {
         // Special case of 0 bytes
         if (!buffer.hasRemaining()) {
-            return 0
+            return
         }
 
         return if (supportsTimeout) {
@@ -183,7 +183,7 @@ internal abstract class ChannelReadOrWriteHandler protected constructor(
         timeoutTracker = null
     }
 
-     private fun completionHandlerCompleted(result: Int, continuation: CancellableContinuation<Int>) {
+     private fun completionHandlerCompleted(result: Int, continuation: CancellableContinuation<Unit>) {
         try {
             logger.verbose { "Async I/O operation completed successfully ($result bytes)" }
 
@@ -200,15 +200,15 @@ internal abstract class ChannelReadOrWriteHandler protected constructor(
         }
     }
 
-    private fun finalCompletionCompleted(result: Int, continuation: CancellableContinuation<Int>) {
+    private fun finalCompletionCompleted(result: Int, continuation: CancellableContinuation<Unit>) {
         try {
             asyncReadOrWriteCompleted(result)
         } finally {
-            continuation.resume(result)
+            continuation.resume(Unit)
         }
     }
 
-    private fun runExactlyCompleted(result: Int, continuation: CancellableContinuation<Int>) {
+    private fun runExactlyCompleted(result: Int, continuation: CancellableContinuation<Unit>) {
         val tempBuffer = buffer ?: internalError("buffer is null")
         if (tempBuffer.remaining() == 0) {
             return finalCompletionCompleted(result, continuation)
@@ -273,7 +273,7 @@ internal abstract class ChannelReadHandler(
         buffer: ByteBuffer,
         timeout: Long,
         unit: TimeUnit,
-        continuation: CancellableContinuation<Int>,
+        continuation: CancellableContinuation<Unit>,
         completionHandler: ContinuationCompletionHandler<Int>
     ) {
         asyncRead(buffer, timeout, unit, continuation, completionHandler)
@@ -287,7 +287,7 @@ internal abstract class ChannelReadHandler(
         buffer: ByteBuffer,
         timeout: Long,
         unit: TimeUnit,
-        continuation: CancellableContinuation<Int>,
+        continuation: CancellableContinuation<Unit>,
         completionHandler: ContinuationCompletionHandler<Int>
     )
 
@@ -327,7 +327,7 @@ internal abstract class ChannelWriteHandler(
         buffer: ByteBuffer,
         timeout: Long,
         unit: TimeUnit,
-        continuation: CancellableContinuation<Int>,
+        continuation: CancellableContinuation<Unit>,
         completionHandler: ContinuationCompletionHandler<Int>
     ) {
         asyncWrite(buffer, timeout, unit, continuation, completionHandler)
@@ -341,7 +341,7 @@ internal abstract class ChannelWriteHandler(
         buffer: ByteBuffer,
         timeout: Long,
         unit: TimeUnit,
-        continuation: CancellableContinuation<Int>,
+        continuation: CancellableContinuation<Unit>,
         completionHandler: ContinuationCompletionHandler<Int>
     )
 
