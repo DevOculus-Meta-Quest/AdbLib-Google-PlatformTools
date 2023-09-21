@@ -30,19 +30,19 @@ import java.util.concurrent.TimeoutException
 interface AdbInputChannel : AutoCloseable {
 
     /**
-     * Reads up to [ByteBuffer.remaining] bytes from the underlying channel.
+     * Reads up to [ByteBuffer.remaining] bytes from the underlying channel, updating
+     * [ByteBuffer.position] to match the number of bytes read.
      *
-     * Returns the number of bytes read, or `-1` if end of stream is reached.
-     * The returned value is never `0`, as this method returns only if there is at least 1 byte available.
+     * [ByteBuffer.position] is left unchanged in if the end of stream is reached.
      *
      * Throws an [java.io.IOException] in case of error, or a [TimeoutException]
      * in case no data is available before the timeout expires.
      */
-    suspend fun read(
+    suspend fun readBuffer(
         buffer: ByteBuffer,
         timeout: Long = Long.MAX_VALUE,
         unit: TimeUnit = TimeUnit.MILLISECONDS
-    ): Int
+    )
 
     /**
      * Reads exactly [ByteBuffer.remaining] bytes from the underlying channel.
@@ -69,6 +69,33 @@ interface AdbInputChannel : AutoCloseable {
             if (count == -1) {
                 throw EOFException("Unexpected end of channel")
             }
+        }
+    }
+}
+
+/**
+ * Reads up to [ByteBuffer.remaining] bytes from the underlying channel.
+ *
+ * Returns the number of bytes read (always at least `1`), or `-1` if end of stream is reached,
+ * or `0` if [ByteBuffer.remaining] is `0`.
+ *
+ * Throws an [java.io.IOException] in case of error, or a [TimeoutException]
+ * in case no data is available before [timeout] expires.
+ */
+suspend inline fun AdbInputChannel.read(
+    buffer: ByteBuffer,
+    timeout: Long = Long.MAX_VALUE,
+    unit: TimeUnit = TimeUnit.MILLISECONDS
+): Int {
+    val remainingBefore = buffer.remaining()
+    if (remainingBefore == 0) {
+        return 0
+    }
+    readBuffer(buffer, timeout, unit)
+    return (remainingBefore - buffer.remaining()).let { count ->
+        when {
+            count == 0 -> -1
+            else -> count
         }
     }
 }

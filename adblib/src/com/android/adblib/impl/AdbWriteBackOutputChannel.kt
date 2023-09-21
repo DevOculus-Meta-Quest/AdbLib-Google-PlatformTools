@@ -21,6 +21,7 @@ import com.android.adblib.AdbOutputChannel
 import com.android.adblib.AdbPipedInputChannel
 import com.android.adblib.AdbSession
 import com.android.adblib.adbLogger
+import com.android.adblib.read
 import com.android.adblib.utils.createChildScope
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.Job

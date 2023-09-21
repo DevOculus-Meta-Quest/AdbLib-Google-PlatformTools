@@ -609,14 +609,12 @@ class ConnectedDeviceTest {
         val progress = TestSyncProgress()
         val slowInputChannel = object : AdbInputChannel {
             var firstCall = true
-            override suspend fun read(buffer: ByteBuffer, timeout: Long, unit: TimeUnit): Int {
-                return if (firstCall) {
+            override suspend fun readBuffer(buffer: ByteBuffer, timeout: Long, unit: TimeUnit) {
+                if (firstCall) {
                     firstCall = false
                     buffer.putInt(5)
-                    4
                 } else {
                     delay(200)
-                    -1
                 }
             }
 

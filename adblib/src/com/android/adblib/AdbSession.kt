@@ -38,6 +38,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 import java.time.Duration
+import java.util.concurrent.TimeUnit
 import kotlin.coroutines.CoroutineContext
 
 /**
@@ -183,7 +184,18 @@ interface AdbSession : AutoCloseable {
     }
 }
 
-suspend fun <R> AdbSession.withErrorTimeout(timeout: Duration, block: suspend CoroutineScope.() -> R): R {
+suspend fun <R> AdbSession.withErrorTimeout(
+    timeout: Long,
+    unit: TimeUnit,
+    block: suspend CoroutineScope.() -> R
+): R {
+    return host.timeProvider.withErrorTimeout(timeout, unit, block)
+}
+
+suspend fun <R> AdbSession.withErrorTimeout(
+    timeout: Duration,
+    block: suspend CoroutineScope.() -> R
+): R {
     return host.timeProvider.withErrorTimeout(timeout, block)
 }
 

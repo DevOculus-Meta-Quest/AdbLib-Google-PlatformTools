@@ -18,6 +18,7 @@ package com.android.adblib.impl
 import com.android.adblib.AdbInputChannel
 import com.android.adblib.AdbSession
 import com.android.adblib.adbLogger
+import com.android.adblib.read
 import com.android.adblib.utils.createChildScope
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
@@ -58,8 +59,8 @@ internal class AdbReadAheadInputChannel(
         }
     }
 
-    override suspend fun read(buffer: ByteBuffer, timeout: Long, unit: TimeUnit): Int {
-        return pipe.read(buffer, timeout, unit).also {
+    override suspend fun readBuffer(buffer: ByteBuffer, timeout: Long, unit: TimeUnit) {
+        pipe.read(buffer, timeout, unit).also {
             logger.verbose { "read: Read $it bytes from pipe '$pipe'" }
         }
     }

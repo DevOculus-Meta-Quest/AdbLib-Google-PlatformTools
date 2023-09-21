@@ -25,13 +25,13 @@ internal class ByteBufferAdbInputChannelImpl(
 ) : AdbInputChannel {
     private var closed = false
 
-    override suspend fun read(buffer: ByteBuffer, timeout: Long, unit: TimeUnit): Int {
+    override suspend fun readBuffer(buffer: ByteBuffer, timeout: Long, unit: TimeUnit) {
         if (closed) {
             throw ClosedChannelException()
         }
 
         if (sourceBuffer.remaining() == 0) {
-            return -1
+            return
         }
 
         // Write bytes from source buffer to destination
@@ -41,7 +41,6 @@ internal class ByteBufferAdbInputChannelImpl(
         sourceBuffer.limit(sourceBuffer.position() + count)
         buffer.put(sourceBuffer)
         sourceBuffer.limit(savedLimit)
-        return count
     }
 
     override fun close() {

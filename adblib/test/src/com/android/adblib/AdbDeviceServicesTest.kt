@@ -377,12 +377,11 @@ class AdbDeviceServicesTest {
         val deviceSelector = DeviceSelector.fromSerialNumber(fakeDevice.deviceId)
         val errorInputChannel = object : AdbInputChannel {
             private var firstCall = true
-            override suspend fun read(buffer: ByteBuffer, timeout: Long, unit: TimeUnit): Int {
+            override suspend fun readBuffer(buffer: ByteBuffer, timeout: Long, unit: TimeUnit) {
                 if (firstCall) {
                     firstCall = false
                     buffer.put('a'.code.toByte())
                     buffer.put('a'.code.toByte())
-                    return 2
                 } else {
                     throw MyTestException("hello")
                 }
@@ -413,12 +412,11 @@ class AdbDeviceServicesTest {
         val deviceSelector = DeviceSelector.fromSerialNumber(fakeDevice.deviceId)
         val errorInputChannel = object : AdbInputChannel {
             private var firstCall = true
-            override suspend fun read(buffer: ByteBuffer, timeout: Long, unit: TimeUnit): Int {
+            override suspend fun readBuffer(buffer: ByteBuffer, timeout: Long, unit: TimeUnit) {
                 if (firstCall) {
                     firstCall = false
                     buffer.put('a'.code.toByte())
                     buffer.put('a'.code.toByte())
-                    return 2
                 } else {
                     // We force a cancellation after the first call
                     throw CancellationException("hello")
@@ -469,20 +467,19 @@ class AdbDeviceServicesTest {
         val testInputChannel = object : AdbInputChannel {
             val lineCount = 10
             var currentLineIndex = 0
-            override suspend fun read(buffer: ByteBuffer, timeout: Long, unit: TimeUnit): Int {
+            override suspend fun readBuffer(buffer: ByteBuffer, timeout: Long, unit: TimeUnit) {
                 // Wait until we are given "go-go"
                 inputOutputCoordinator.receive()
 
                 // Read lineCount lines, then EOF
                 if (currentLineIndex >= lineCount) {
-                    return -1
+                    return
                 }
 
                 val bytes =
                     "line ${currentLineIndex + 1}\n".toByteArray(AdbProtocolUtils.ADB_CHARSET)
                 buffer.put(bytes)
                 currentLineIndex++
-                return bytes.size
             }
 
             override fun close() {
@@ -534,18 +531,16 @@ class AdbDeviceServicesTest {
         val deviceSelector = DeviceSelector.fromSerialNumber(fakeDevice.deviceId)
         val slowInputChannel = object : AdbInputChannel {
             var firstCall = true
-            override suspend fun read(buffer: ByteBuffer, timeout: Long, unit: TimeUnit): Int {
-                return if (firstCall) {
+            override suspend fun readBuffer(buffer: ByteBuffer, timeout: Long, unit: TimeUnit) {
+                if (firstCall) {
                     firstCall = false
                     delay(10)
                     buffer.put('a'.code.toByte())
-                    1
                 } else {
                     // Delay second call, so that the "cat" command does not receive
                     // input for a while so that it does not emit any output. We essentially
                     // force the "cat" command to be inactive for a while.
                     delay(10_000)
-                    -1
                 }
             }
 
@@ -573,17 +568,16 @@ class AdbDeviceServicesTest {
         val deviceSelector = DeviceSelector.fromSerialNumber(fakeDevice.deviceId)
         val slowInputChannel = object : AdbInputChannel {
             var callCount = 0
-            override suspend fun read(buffer: ByteBuffer, timeout: Long, unit: TimeUnit): Int {
+            override suspend fun readBuffer(buffer: ByteBuffer, timeout: Long, unit: TimeUnit) {
                 // In total, this will take 20 * 10 = 200 msec, but each call is less
                 // than the inactivity timeout of 100 msec we use for the test
-                return if (callCount < 20) {
+                if (callCount < 20) {
                     delay(10)
                     buffer.put(('a'.code.toByte() + callCount.toByte()).toByte())
                     buffer.put('\n'.code.toByte())
                     callCount++
-                    2
                 } else {
-                    -1
+                    // Nothing to do
                 }
             }
 
@@ -754,12 +748,11 @@ class AdbDeviceServicesTest {
         val deviceSelector = DeviceSelector.fromSerialNumber(fakeDevice.deviceId)
         val errorInputChannel = object : AdbInputChannel {
             private var firstCall = true
-            override suspend fun read(buffer: ByteBuffer, timeout: Long, unit: TimeUnit): Int {
+            override suspend fun readBuffer(buffer: ByteBuffer, timeout: Long, unit: TimeUnit) {
                 if (firstCall) {
                     firstCall = false
                     buffer.put('a'.code.toByte())
                     buffer.put('a'.code.toByte())
-                    return 2
                 } else {
                     throw MyTestException("hello")
                 }
@@ -790,12 +783,11 @@ class AdbDeviceServicesTest {
         val deviceSelector = DeviceSelector.fromSerialNumber(fakeDevice.deviceId)
         val errorInputChannel = object : AdbInputChannel {
             private var firstCall = true
-            override suspend fun read(buffer: ByteBuffer, timeout: Long, unit: TimeUnit): Int {
+            override suspend fun readBuffer(buffer: ByteBuffer, timeout: Long, unit: TimeUnit) {
                 if (firstCall) {
                     firstCall = false
                     buffer.put('a'.code.toByte())
                     buffer.put('a'.code.toByte())
-                    return 2
                 } else {
                     // We force a cancellation after the first call
                     throw CancellationException("hello")
@@ -1653,14 +1645,12 @@ class AdbDeviceServicesTest {
         val progress = TestSyncProgress()
         val slowInputChannel = object : AdbInputChannel {
             var firstCall = true
-            override suspend fun read(buffer: ByteBuffer, timeout: Long, unit: TimeUnit): Int {
-                return if (firstCall) {
+            override suspend fun readBuffer(buffer: ByteBuffer, timeout: Long, unit: TimeUnit) {
+                if (firstCall) {
                     firstCall = false
                     buffer.putInt(5)
-                    4
                 } else {
                     delay(200)
-                    -1
                 }
             }
 

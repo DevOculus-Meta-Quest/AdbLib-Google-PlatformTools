@@ -15,6 +15,7 @@
  */
 package com.android.adblib.impl.channels
 
+import com.android.adblib.read
 import com.android.adblib.testingutils.CloseablesRule
 import com.android.adblib.testingutils.CoroutineTestUtils.runBlockingWithTimeout
 import com.android.adblib.testingutils.FakeAdbServerProvider

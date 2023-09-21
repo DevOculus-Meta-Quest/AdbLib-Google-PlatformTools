@@ -21,8 +21,7 @@ import java.util.concurrent.TimeUnit
 
 internal object EmptyAdbInputChannelImpl : AdbInputChannel {
 
-    override suspend fun read(buffer: ByteBuffer, timeout: Long, unit: TimeUnit): Int {
-        return -1
+    override suspend fun readBuffer(buffer: ByteBuffer, timeout: Long, unit: TimeUnit) {
     }
 
     override fun close() {

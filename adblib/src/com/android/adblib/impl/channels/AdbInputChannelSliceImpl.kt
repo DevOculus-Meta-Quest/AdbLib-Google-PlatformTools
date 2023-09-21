@@ -16,6 +16,7 @@
 package com.android.adblib.impl.channels
 
 import com.android.adblib.AdbInputChannel
+import com.android.adblib.read
 import java.nio.ByteBuffer
 import java.nio.channels.ClosedChannelException
 import java.util.concurrent.TimeUnit
@@ -29,13 +30,13 @@ internal class AdbInputChannelSliceImpl(
 
     private var count: Int = 0
 
-    override suspend fun read(buffer: ByteBuffer, timeout: Long, unit: TimeUnit): Int {
+    override suspend fun readBuffer(buffer: ByteBuffer, timeout: Long, unit: TimeUnit) {
         if (closed) {
             throw ClosedChannelException()
         }
 
         if (count >= length) {
-            return -1
+            return
         }
         val remainingBytes = length - count
 
@@ -58,7 +59,6 @@ internal class AdbInputChannelSliceImpl(
             }
             assert(count <= length)
         }
-        return readCount
     }
 
     override fun close() {

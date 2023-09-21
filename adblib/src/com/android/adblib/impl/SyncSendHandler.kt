@@ -23,6 +23,7 @@ import com.android.adblib.RemoteFileMode
 import com.android.adblib.SyncProgress
 import com.android.adblib.adbLogger
 import com.android.adblib.impl.services.AdbServiceRunner
+import com.android.adblib.read
 import com.android.adblib.utils.AdbProtocolUtils
 import com.android.adblib.withPrefix
 import kotlinx.coroutines.withContext

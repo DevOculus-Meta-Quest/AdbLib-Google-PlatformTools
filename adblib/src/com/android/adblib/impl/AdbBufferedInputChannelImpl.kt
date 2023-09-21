@@ -18,6 +18,7 @@ package com.android.adblib.impl
 import com.android.adblib.AdbInputChannel
 import com.android.adblib.AdbSession
 import com.android.adblib.adbLogger
+import com.android.adblib.read
 import java.io.BufferedInputStream
 import java.io.InputStream
 import java.nio.ByteBuffer
@@ -58,14 +59,15 @@ internal class AdbBufferedInputChannelImpl(
         assertInputBufferIsValid()
     }
 
-    override suspend fun read(buffer: ByteBuffer, timeout: Long, unit: TimeUnit): Int {
+    override suspend fun readBuffer(buffer: ByteBuffer, timeout: Long, unit: TimeUnit) {
         // Fast path: internal buffer contains data
         if (inputBufferSlice.remaining() > 0) {
-            return copyInputBufferTo(buffer).also { count ->
+            copyInputBufferTo(buffer).also { count ->
                 logger.verbose { "read: Copied $count bytes from input '$input'" }
             }
+            return
         }
-        return readAndCopyInputBufferTo(buffer, timeout, unit)
+        readAndCopyInputBufferTo(buffer, timeout, unit)
     }
 
     override suspend fun readExactly(buffer: ByteBuffer, timeout: Long, unit: TimeUnit) {

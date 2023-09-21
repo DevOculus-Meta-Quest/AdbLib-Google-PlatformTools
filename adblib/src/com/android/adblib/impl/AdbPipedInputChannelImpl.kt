@@ -20,6 +20,7 @@ import com.android.adblib.AdbPipedOutputChannel
 import com.android.adblib.AdbSession
 import com.android.adblib.adbLogger
 import com.android.adblib.utils.CircularByteBuffer
+import com.android.adblib.withErrorTimeout
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
@@ -29,7 +30,7 @@ import java.nio.channels.ClosedChannelException
 import java.util.concurrent.TimeUnit
 
 internal class AdbPipedInputChannelImpl(
-    session: AdbSession,
+    private val session: AdbSession,
     bufferSize: Int = DEFAULT_BUFFER_SIZE
 ) : AdbPipedInputChannel {
 
@@ -67,8 +68,8 @@ internal class AdbPipedInputChannelImpl(
 
     override val pipeSource: AdbPipedOutputChannel = AdbPipedOutputChannelImpl(session, this)
 
-    override suspend fun read(buffer: ByteBuffer, timeout: Long, unit: TimeUnit): Int {
-        return withTimeout(unit.toMillis(timeout)) {
+    override suspend fun readBuffer(buffer: ByteBuffer, timeout: Long, unit: TimeUnit) {
+        session.withErrorTimeout(timeout, unit) {
             readImpl(buffer)
         }
     }

@@ -91,8 +91,8 @@ internal class AdbSocketChannelImpl(
         }
     }
 
-    override suspend fun read(buffer: ByteBuffer, timeout: Long, unit: TimeUnit): Int {
-        return channelReadHandler.read(buffer, timeout, unit)
+    override suspend fun readBuffer(buffer: ByteBuffer, timeout: Long, unit: TimeUnit) {
+        channelReadHandler.readBuffer(buffer, timeout, unit)
     }
 
     override suspend fun readExactly(buffer: ByteBuffer, timeout: Long, unit: TimeUnit) {

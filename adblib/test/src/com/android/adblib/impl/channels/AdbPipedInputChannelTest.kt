@@ -16,6 +16,7 @@
 package com.android.adblib.impl.channels
 
 import com.android.adblib.AdbOutputChannel
+import com.android.adblib.read
 import com.android.adblib.testingutils.CloseablesRule
 import com.android.adblib.testingutils.CoroutineTestUtils.runBlockingWithTimeout
 import com.android.adblib.testingutils.CoroutineTestUtils.yieldUntil
@@ -31,6 +32,7 @@ import org.junit.rules.ExpectedException
 import java.io.IOException
 import java.nio.ByteBuffer
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.TimeoutException
 
 class AdbPipedInputChannelTest {
 
@@ -152,7 +154,7 @@ class AdbPipedInputChannelTest {
         val pipedChannel = channelFactory.createPipedChannel(15)
 
         // Act
-        exceptionRule.expect(TimeoutCancellationException::class.java)
+        exceptionRule.expect(TimeoutException::class.java)
         pipedChannel.read(ByteBuffer.allocate(10), 10, TimeUnit.MILLISECONDS)
 
         // Assert

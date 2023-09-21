@@ -242,7 +242,7 @@ internal abstract class ChannelReadOrWriteHandler protected constructor(
 }
 
 /**
- * Provides services to [read] data from any NIO [Channel] that supports asynchronous
+ * Provides services to [readBuffer] data from any NIO [Channel] that supports asynchronous
  * reads, e.g. [AsynchronousFileChannel] or [AsynchronousSocketChannel].
  */
 internal abstract class ChannelReadHandler(
@@ -251,13 +251,12 @@ internal abstract class ChannelReadHandler(
 ) : ChannelReadOrWriteHandler(host, nioChannel) {
 
     /**
-     * Reads up to [ByteBuffer.remaining] bytes from the underlying channel, returning -1
-     * when EOF is reached.
+     * Reads up to [ByteBuffer.remaining] bytes from the underlying channel
      *
-     * @see AdbInputChannel.read
+     * @see AdbInputChannel.readBuffer
      */
-    suspend fun read(buffer: ByteBuffer, timeout: Long, unit: TimeUnit): Int {
-        return run(buffer, timeout, unit)
+    suspend inline fun readBuffer(buffer: ByteBuffer, timeout: Long, unit: TimeUnit) {
+        run(buffer, timeout, unit)
     }
 
     /**
@@ -266,7 +265,7 @@ internal abstract class ChannelReadHandler(
      *
      * @see AdbInputChannel.readExactly
      */
-    suspend fun readExactly(buffer: ByteBuffer, timeout: Long, unit: TimeUnit) {
+    suspend inline fun readExactly(buffer: ByteBuffer, timeout: Long, unit: TimeUnit) {
         runExactly(buffer, timeout, unit)
     }
 

@@ -202,8 +202,8 @@ class AdbInputFileChannelTest {
         val inputChannel = object : AdbInputChannel {
             var closed = false
 
-            override suspend fun read(buffer: ByteBuffer, timeout: Long, unit: TimeUnit): Int {
-                return -1
+            override suspend fun readBuffer(buffer: ByteBuffer, timeout: Long, unit: TimeUnit) {
+                // Nothing to do
             }
 
             override fun close() {
@@ -252,10 +252,9 @@ class AdbInputFileChannelTest {
         // Prepare
         val inputChannel = object : AdbInputChannel {
             var callCount = 0
-            override suspend fun read(buffer: ByteBuffer, timeout: Long, unit: TimeUnit): Int {
+            override suspend fun readBuffer(buffer: ByteBuffer, timeout: Long, unit: TimeUnit) {
                 if (callCount++ <= 4) {
                     buffer.put("abcd\n".toByteArray(Charsets.UTF_8))
-                    return 5
                 } else {
                     throw IOException("Failure to read")
                 }
@@ -329,10 +328,9 @@ class AdbInputFileChannelTest {
         // Prepare
         val inputChannel = object : AdbInputChannel {
             var callCount = 0
-            override suspend fun read(buffer: ByteBuffer, timeout: Long, unit: TimeUnit): Int {
+            override suspend fun readBuffer(buffer: ByteBuffer, timeout: Long, unit: TimeUnit) {
                 if (callCount++ <= 4) {
                     buffer.put("abcd\n".toByteArray(Charsets.UTF_8))
-                    return 5
                 } else {
                     throw IOException("Failure to read")
                 }
@@ -361,10 +359,9 @@ class AdbInputFileChannelTest {
         // Prepare
         val inputChannel = object : AdbInputChannel {
             var callCount = 0
-            override suspend fun read(buffer: ByteBuffer, timeout: Long, unit: TimeUnit): Int {
+            override suspend fun readBuffer(buffer: ByteBuffer, timeout: Long, unit: TimeUnit) {
                 if (callCount++ <= 4) {
                     buffer.put("abcd\n".toByteArray(Charsets.UTF_8))
-                    return 5
                 } else {
                     throw CancellationException("Cancelled read")
                 }
@@ -393,13 +390,11 @@ class AdbInputFileChannelTest {
         // Prepare
         val inputChannel = object : AdbInputChannel {
             var callCount = 0
-            override suspend fun read(buffer: ByteBuffer, timeout: Long, unit: TimeUnit): Int {
+            override suspend fun readBuffer(buffer: ByteBuffer, timeout: Long, unit: TimeUnit) {
                 if (callCount++ <= 4) {
                     buffer.put("abcd\n".toByteArray(Charsets.UTF_8))
-                    return 5
                 } else {
                     delay(5_000)
-                    return -1
                 }
             }
 

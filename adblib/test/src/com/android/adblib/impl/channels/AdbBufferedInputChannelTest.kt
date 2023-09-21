@@ -16,6 +16,7 @@
 package com.android.adblib.impl.channels
 
 import com.android.adblib.AdbInputChannel
+import com.android.adblib.read
 import com.android.adblib.skipRemaining
 import com.android.adblib.testingutils.CloseablesRule
 import com.android.adblib.testingutils.CoroutineTestUtils.runBlockingWithTimeout
@@ -168,9 +169,8 @@ class AdbBufferedInputChannelTest {
         val session = registerCloseable(TestingAdbSession())
         val channelFactory = AdbChannelFactoryImpl(session)
         val input = object: AdbInputChannel {
-            override suspend fun read(buffer: ByteBuffer, timeout: Long, unit: TimeUnit): Int {
+            override suspend fun readBuffer(buffer: ByteBuffer, timeout: Long, unit: TimeUnit) {
                 cancel("Input Channel read is cancelled")
-                return -1
             }
 
             override fun close() {
@@ -204,26 +204,23 @@ class AdbBufferedInputChannelTest {
         var readCounter = 0
             private set
 
-        override suspend fun read(buffer: ByteBuffer, timeout: Long, unit: TimeUnit): Int {
+        override suspend fun readBuffer(buffer: ByteBuffer, timeout: Long, unit: TimeUnit) {
             readCounter++
             readDelay?.also {
                 delay(it.toMillis())
             }
-            return when {
+            when {
                 offset < length -> {
                     val byteCount = min(buffer.remaining(), length - offset)
                     repeat(byteCount) {
                         buffer.put(1)
                         offset++
                     }
-                    byteCount
                 }
 
                 else -> {
                     if (throwOnEOF) {
                         throw IOException("My input channel exception")
-                    } else {
-                        -1
                     }
                 }
             }

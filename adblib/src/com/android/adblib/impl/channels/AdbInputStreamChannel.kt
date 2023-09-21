@@ -29,8 +29,8 @@ internal class AdbInputStreamChannel(
         stream.close()
     }
 
-    override suspend fun read(buffer: ByteBuffer, timeout: Long, unit: TimeUnit): Int {
-        return host.timeProvider.withErrorTimeout(timeout, unit) {
+    override suspend fun readBuffer(buffer: ByteBuffer, timeout: Long, unit: TimeUnit) {
+        host.timeProvider.withErrorTimeout(timeout, unit) {
             // Note: Since InputStream.read is a blocking I/O operation, we use the IO dispatcher
             runInterruptibleIO(host.blockingIoDispatcher) {
                 val count = stream.read(bytes, 0, min(bytes.size, buffer.remaining()))
@@ -38,7 +38,6 @@ internal class AdbInputStreamChannel(
                 if (count > 0) {
                     buffer.put(bytes, 0, count)
                 }
-                count
             }
         }
     }
