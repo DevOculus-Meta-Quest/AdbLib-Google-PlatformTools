@@ -20,6 +20,7 @@ import com.android.adblib.AdbDeviceSyncServices
 import com.android.adblib.AdbInputChannel
 import com.android.adblib.AdbOutputChannel
 import com.android.adblib.DeviceSelector
+import com.android.adblib.FileStat
 import com.android.adblib.RemoteFileMode
 import com.android.adblib.SyncProgress
 import com.android.adblib.impl.services.AdbServiceRunner
@@ -52,6 +53,11 @@ internal class AdbDeviceSyncServicesImpl private constructor(
      */
     private val recvHandler = SyncRecvHandler(serviceRunner, device, deviceChannel)
 
+    /**
+     * Helper class to handle `STAT` commands
+     */
+    private val statHandler = SyncStatHandler(serviceRunner, device, deviceChannel)
+
     override fun close() {
         deviceChannel.close()
     }
@@ -81,6 +87,10 @@ internal class AdbDeviceSyncServicesImpl private constructor(
         bufferSize: Int
     ) {
         recvHandler.recv(remoteFilePath, destinationChannel, progress)
+    }
+
+    override suspend fun stat(remoteFilePath: String) : FileStat? {
+        return statHandler.stat(remoteFilePath)
     }
 
     companion object {

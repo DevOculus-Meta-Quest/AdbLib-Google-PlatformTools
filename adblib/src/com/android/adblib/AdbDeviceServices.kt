@@ -732,6 +732,20 @@ suspend fun AdbDeviceServices.syncRecv(
 }
 
 /**
+ * Stat a single file from a remote device.
+ *
+ * @see [AdbDeviceSyncServices.stat]
+ */
+suspend fun AdbDeviceServices.syncStat(
+    device: DeviceSelector,
+    remoteFilePath: String
+): FileStat? {
+    return sync(device).use {
+        it.stat(remoteFilePath)
+    }
+}
+
+/**
  * Returns a [DeviceProperties] instance for the given device. [DeviceProperties]
  * gives access to device properties returned by the `getprop` shell command.
  */

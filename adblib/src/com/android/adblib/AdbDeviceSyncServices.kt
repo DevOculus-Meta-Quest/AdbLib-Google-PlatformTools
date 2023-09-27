@@ -69,7 +69,19 @@ interface AdbDeviceSyncServices : AutoCloseable {
         progress: SyncProgress?,
         bufferSize: Int = SYNC_DATA_MAX
     )
+
+    /**
+     * Stat a file on the remote device
+     * ("STAT" command)
+     *
+     * @throws AdbFailResponseException if the ADB daemon cannot stat the file contents
+     * @throws AdbProtocolErrorException if there is an unexpected ADB protocol error
+     * @throws IOException if there is an I/O error
+     */
+    suspend fun stat(remoteFilePath: String) : FileStat?
 }
+
+data class FileStat(val remoteFileMode: RemoteFileMode, val size: Int, val lastModified: FileTime)
 
 /**
  * Reports progress about a single remote file transfer.
