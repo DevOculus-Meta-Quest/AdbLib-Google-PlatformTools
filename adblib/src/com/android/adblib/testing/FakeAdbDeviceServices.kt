@@ -33,6 +33,7 @@ import com.android.adblib.SocketSpec
 import com.android.adblib.utils.AdbProtocolUtils.ADB_CHARSET
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
 import java.nio.ByteBuffer
 import java.time.Duration
 import java.util.concurrent.LinkedBlockingDeque
@@ -141,6 +142,17 @@ class FakeAdbDeviceServices(override val session: AdbSession) : AdbDeviceService
             .add(command, stdout, stderr, exitCode)
     }
 
+    fun configureShellV2Command(
+        deviceSelector: DeviceSelector,
+        command: String,
+        stdout: ByteBuffer,
+        stderr: ByteBuffer,
+        exitCode: Int = 0,
+    ) {
+        shellV2Commands.getOrPut(deviceSelector.transportPrefix) { ShellV2Commands() }
+            .add(command, stdout, stderr, exitCode)
+    }
+
     override fun <T> shell(
         device: DeviceSelector,
         command: String,
@@ -199,7 +211,7 @@ class FakeAdbDeviceServices(override val session: AdbSession) : AdbDeviceService
                 output.stdout.split(bufferSize) { shellCollector.collectStdout(this, it) }
                 output.stderr.split(bufferSize) { shellCollector.collectStderr(this, it) }
                 shellCollector.end(this, output.exitCode)
-            }
+            }.flowOn(session.host.ioDispatcher)
         } else {
             shellNumTimeouts--
             throw TimeoutException()
