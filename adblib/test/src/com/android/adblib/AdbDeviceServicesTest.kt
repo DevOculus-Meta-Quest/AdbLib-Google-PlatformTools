@@ -69,6 +69,8 @@ import java.time.Duration
 import java.time.Instant
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
+import java.util.regex.Matcher
+import java.util.regex.Pattern
 
 class AdbDeviceServicesTest {
 
@@ -2297,6 +2299,15 @@ class AdbDeviceServicesTest {
         Assert.assertEquals(5, shellOutput.exitCode)
     }
 
+    val SESSION_PATTERN = Pattern.compile("""Success: .*\[(\d*)\].*""")
+    private fun extractSessionID(output: String) : String {
+        val matcher: Matcher = SESSION_PATTERN.matcher(output.trim())
+        when {
+            matcher.matches() -> return matcher.group(1)
+            else -> throw IllegalStateException("Unexpected session ID message ($output)")
+        }
+    }
+
     @Test
     fun testAbbWithStdin(): Unit = runBlockingWithTimeout {
         // Prepare
@@ -2305,11 +2316,22 @@ class AdbDeviceServicesTest {
         val dataToSend = ByteArray(1_000_000)
         val stdin = AdbInputStreamChannel(deviceServices.session.host, dataToSend.inputStream())
 
+        // Run a create session. It should create session 0 in the package manager
+        val sessionOutput = run {
+            val flow = deviceServices.abb(
+                deviceSelector,
+                listOf("package", "install-create"),
+                TextShellV2Collector(),
+            )
+            flow.first().stdout
+        }
+        val sessionID = extractSessionID(sessionOutput)
+
         // Act
         val shellOutput = run {
             val flow = deviceServices.abb(
                 deviceSelector,
-                listOf("package", "install-write", "-S", dataToSend.size.toString(), "-"),
+                listOf("package", "install-write", "-S", dataToSend.size.toString(), sessionID, "-"),
                 TextShellV2Collector(),
                 stdinChannel = stdin
             )
