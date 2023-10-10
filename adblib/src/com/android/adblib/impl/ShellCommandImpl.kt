@@ -17,8 +17,8 @@ package com.android.adblib.impl
 
 import com.android.adblib.AdbFeatures
 import com.android.adblib.AdbInputChannel
+import com.android.adblib.AdbLibProperties
 import com.android.adblib.AdbSession
-import com.android.adblib.DEFAULT_SHELL_BUFFER_SIZE
 import com.android.adblib.DeviceSelector
 import com.android.adblib.INFINITE_DURATION
 import com.android.adblib.ShellCollector
@@ -30,6 +30,7 @@ import com.android.adblib.adbLogger
 import com.android.adblib.availableFeatures
 import com.android.adblib.deviceProperties
 import com.android.adblib.impl.ShellWithIdleMonitoring.Parameters
+import com.android.adblib.property
 import com.android.adblib.utils.SuspendingLazy
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.FlowCollector
@@ -56,7 +57,7 @@ internal class ShellCommandImpl<T>(
     private var commandOutputTimeout: Duration? = null
     private var commandOverride: ((String, Protocol) -> String)? = null
     private var stdinChannel: AdbInputChannel? = null
-    private var bufferSize: Int = DEFAULT_SHELL_BUFFER_SIZE
+    private var bufferSize: Int = session.property(AdbLibProperties.DEFAULT_SHELL_BUFFER_SIZE)
 
     override fun <U> withCollector(collector: ShellV2Collector<U>): ShellCommand<U> {
         @Suppress("UNCHECKED_CAST")

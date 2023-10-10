@@ -1,5 +1,6 @@
 package com.android.adblib
 
+import com.android.adblib.AdbLibProperties.DEFAULT_SHELL_BUFFER_SIZE
 import com.android.adblib.impl.DevicePropertiesImpl
 import com.android.adblib.impl.ShellCommandImpl
 import com.android.adblib.utils.AdbProtocolUtils
@@ -13,8 +14,6 @@ import java.nio.file.Path
 import java.nio.file.attribute.FileTime
 import java.time.Duration
 import java.util.concurrent.TimeoutException
-
-const val DEFAULT_SHELL_BUFFER_SIZE = DEFAULT_BUFFER_SIZE
 
 /**
  * Exposes services that are executed by the ADB daemon of a given device
@@ -86,7 +85,7 @@ interface AdbDeviceServices {
         shellCollector: ShellCollector<T>,
         stdinChannel: AdbInputChannel? = null,
         commandTimeout: Duration = INFINITE_DURATION,
-        bufferSize: Int = DEFAULT_SHELL_BUFFER_SIZE,
+        bufferSize: Int = session.property(DEFAULT_SHELL_BUFFER_SIZE),
         shutdownOutput: Boolean = true,
         stripCrLf: Boolean = false,
     ): Flow<T>
@@ -128,7 +127,7 @@ interface AdbDeviceServices {
         shellCollector: ShellCollector<T>,
         stdinChannel: AdbInputChannel? = null,
         commandTimeout: Duration = INFINITE_DURATION,
-        bufferSize: Int = DEFAULT_SHELL_BUFFER_SIZE,
+        bufferSize: Int = session.property(DEFAULT_SHELL_BUFFER_SIZE),
         shutdownOutput: Boolean = true
     ): Flow<T>
 
@@ -189,7 +188,7 @@ interface AdbDeviceServices {
         shellCollector: ShellV2Collector<T>,
         stdinChannel: AdbInputChannel? = null,
         commandTimeout: Duration = INFINITE_DURATION,
-        bufferSize: Int = DEFAULT_SHELL_BUFFER_SIZE,
+        bufferSize: Int = session.property(DEFAULT_SHELL_BUFFER_SIZE),
     ): Flow<T>
 
     /**
@@ -240,7 +239,7 @@ interface AdbDeviceServices {
         shellCollector: ShellCollector<T>,
         stdinChannel: AdbInputChannel? = null,
         commandTimeout: Duration = INFINITE_DURATION,
-        bufferSize: Int = DEFAULT_SHELL_BUFFER_SIZE,
+        bufferSize: Int = session.property(DEFAULT_SHELL_BUFFER_SIZE),
         shutdownOutput: Boolean = true
     ): Flow<T>
 
@@ -283,7 +282,7 @@ interface AdbDeviceServices {
         shellCollector: ShellV2Collector<T>,
         stdinChannel: AdbInputChannel? = null,
         commandTimeout: Duration = INFINITE_DURATION,
-        bufferSize: Int = DEFAULT_SHELL_BUFFER_SIZE,
+        bufferSize: Int = session.property(DEFAULT_SHELL_BUFFER_SIZE),
     ): Flow<T>
 
     /**
@@ -564,7 +563,7 @@ suspend fun AdbDeviceServices.shellAsText(
     command: String,
     stdinChannel: AdbInputChannel? = null,
     commandTimeout: Duration = INFINITE_DURATION,
-    bufferSize: Int = DEFAULT_SHELL_BUFFER_SIZE,
+    bufferSize: Int = session.property(DEFAULT_SHELL_BUFFER_SIZE),
 ): ShellCommandOutput {
     return shellCommand(device, command)
         .withTextCollector()
@@ -592,7 +591,7 @@ fun AdbDeviceServices.shellAsLines(
     command: String,
     stdinChannel: AdbInputChannel? = null,
     commandTimeout: Duration = INFINITE_DURATION,
-    bufferSize: Int = DEFAULT_SHELL_BUFFER_SIZE,
+    bufferSize: Int = session.property(DEFAULT_SHELL_BUFFER_SIZE),
 ): Flow<ShellCommandOutputElement> {
     return shellCommand(device, command)
         .withLineCollector()
@@ -622,7 +621,7 @@ fun AdbDeviceServices.shellAsLineBatches(
     command: String,
     stdinChannel: AdbInputChannel? = null,
     commandTimeout: Duration = INFINITE_DURATION,
-    bufferSize: Int = DEFAULT_SHELL_BUFFER_SIZE,
+    bufferSize: Int = session.property(DEFAULT_SHELL_BUFFER_SIZE),
 ): Flow<BatchShellCommandOutputElement> {
     return shellCommand(device, command)
         .withLineBatchCollector()

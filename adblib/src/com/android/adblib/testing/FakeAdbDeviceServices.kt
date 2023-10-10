@@ -19,6 +19,7 @@ import com.android.adblib.AdbChannel
 import com.android.adblib.AdbDeviceServices
 import com.android.adblib.AdbDeviceSyncServices
 import com.android.adblib.AdbInputChannel
+import com.android.adblib.AdbLibProperties
 import com.android.adblib.AdbSession
 import com.android.adblib.AppProcessEntry
 import com.android.adblib.DeviceSelector
@@ -311,7 +312,7 @@ class FakeAdbDeviceServices(override val session: AdbSession) : AdbDeviceService
         val deviceSelector: String,
         val command: String,
         val commandTimeout: Duration = INFINITE_DURATION,
-        val bufferSize: Int = DEFAULT_BUFFER_SIZE,
+        val bufferSize: Int = AdbLibProperties.DEFAULT_SHELL_BUFFER_SIZE.defaultValue,
     )
 }
 

@@ -81,7 +81,7 @@ interface ShellCommand<T> {
     /**
      * Overrides the default buffer size used for buffering `stdout`, `stderr` and `stdin`.
      *
-     * The default value is [DEFAULT_SHELL_BUFFER_SIZE].
+     * The default value is [AdbLibProperties.DEFAULT_SHELL_BUFFER_SIZE].
      */
     fun withBufferSize(size: Int): ShellCommand<T>
 

@@ -399,7 +399,7 @@ class ShellManager(val device: ConnectedDevice) {
         command: String,
         stdinChannel: AdbInputChannel? = null,
         commandTimeout: Duration = INFINITE_DURATION,
-        bufferSize: Int = DEFAULT_SHELL_BUFFER_SIZE,
+        bufferSize: Int = device.session.property(AdbLibProperties.DEFAULT_SHELL_BUFFER_SIZE),
     ): ShellCommandOutput {
         return device.session.deviceServices.shellAsText(
             device.selector,
@@ -420,7 +420,7 @@ class ShellManager(val device: ConnectedDevice) {
         command: String,
         stdinChannel: AdbInputChannel? = null,
         commandTimeout: Duration = INFINITE_DURATION,
-        bufferSize: Int = DEFAULT_SHELL_BUFFER_SIZE,
+        bufferSize: Int = device.session.property(AdbLibProperties.DEFAULT_SHELL_BUFFER_SIZE),
     ): Flow<ShellCommandOutputElement> {
         return device.session.deviceServices.shellAsLines(
             device.selector,
@@ -441,7 +441,7 @@ class ShellManager(val device: ConnectedDevice) {
         command: String,
         stdinChannel: AdbInputChannel? = null,
         commandTimeout: Duration = INFINITE_DURATION,
-        bufferSize: Int = DEFAULT_SHELL_BUFFER_SIZE,
+        bufferSize: Int = device.session.property(AdbLibProperties.DEFAULT_SHELL_BUFFER_SIZE),
     ): Flow<BatchShellCommandOutputElement> {
         return device.session.deviceServices.shellAsLineBatches(
             device.selector,
