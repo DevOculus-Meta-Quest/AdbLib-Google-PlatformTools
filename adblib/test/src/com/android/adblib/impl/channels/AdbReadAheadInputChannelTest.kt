@@ -20,6 +20,7 @@ import com.android.adblib.read
 import com.android.adblib.skipRemaining
 import com.android.adblib.testingutils.CloseablesRule
 import com.android.adblib.testingutils.CoroutineTestUtils.runBlockingWithTimeout
+import com.android.adblib.testingutils.CoroutineTestUtils.yieldUntil
 import com.android.adblib.testingutils.TestingAdbSession
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.cancel
@@ -65,11 +66,11 @@ class AdbReadAheadInputChannelTest {
             }.toList()
 
         // Assert
-        Assert.assertEquals(
-            "There should be only 2 `read` invocations: 1 read of 1_000 bytes, 1 read for EOF",
-            2,
-            input.readCounter
-        )
+        yieldUntil {
+            // There should be only 2 `read` invocations: 1 read of 1_000 bytes, 1 read for EOF
+            input.readCounter == 2
+        }
+        Assert.assertTrue(input.eofReached)
         Assert.assertEquals(10, counts.size)
         repeat(counts.size) { index ->
             Assert.assertEquals(100, counts[index])
@@ -203,6 +204,9 @@ class AdbReadAheadInputChannelTest {
         var readCounter = 0
             private set
 
+        var eofReached = false
+            private set
+
         override suspend fun readBuffer(buffer: ByteBuffer, timeout: Long, unit: TimeUnit) {
             readCounter++
             readDelay?.also {
@@ -218,6 +222,7 @@ class AdbReadAheadInputChannelTest {
                 }
 
                 else -> {
+                    eofReached = true
                     if (throwOnEOF) {
                         throw IOException("My input channel exception")
                     }
