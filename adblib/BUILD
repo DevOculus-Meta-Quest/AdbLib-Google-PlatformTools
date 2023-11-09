@@ -1,12 +1,13 @@
 load("//tools/base/bazel:bazel.bzl", "iml_module")
 load("//tools/base/bazel:kotlin.bzl", "kotlin_library", "kotlin_test")
-load("//tools/base/bazel:proto.bzl", "android_java_proto_library", "java_proto_library")
+load("//tools/base/bazel:proto.bzl", "java_proto_library")
 
 # managed by go/iml_to_build
 iml_module(
     name = "studio.android.sdktools.adblib",
     srcs = ["src"],
     iml_files = ["android.sdktools.adblib.iml"],
+    lint_baseline = "lint_baseline.xml",
     test_srcs = ["test/src"],
     visibility = ["//visibility:public"],
     # do not sort: must match IML order
@@ -49,6 +50,7 @@ kotlin_library(
 # Run tests with: bazel test //tools/base/adblib:adblib.tests.test
 kotlin_test(
     name = "adblib.tests",
+    # buildifier: disable=bad-recursive-glob
     srcs = glob([
         "test/src/**/*.kt",
         "test/src/**/*.java",
@@ -77,7 +79,8 @@ kotlin_test(
 # of adblib. This compiles the proto into the "com.android.server.adb.protos" package.
 #
 java_proto_library(
+    # buildifier: disable=java_proto_library-naming
     name = "app-processes-proto",
-    srcs = glob(["proto/app_processes.proto"]),
+    srcs = ["proto/app_processes.proto"],
     visibility = [],
 )
