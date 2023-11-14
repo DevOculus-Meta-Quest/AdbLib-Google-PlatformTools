@@ -46,7 +46,7 @@ class FakeAdbSession : AdbSession {
 
     override val deviceServices = FakeAdbDeviceServices(this)
 
-    override val host: AdbSessionHost = FakeAdbSessionHost()
+    override val host = FakeAdbSessionHost()
 
     override val channelFactory: AdbChannelFactory = AdbChannelFactoryImpl(this)
 

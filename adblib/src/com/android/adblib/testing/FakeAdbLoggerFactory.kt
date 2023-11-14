@@ -18,9 +18,12 @@ package com.android.adblib.testing
 import com.android.adblib.AdbLogger
 import com.android.adblib.AdbLoggerFactory
 import java.util.Collections
+import java.util.concurrent.LinkedBlockingDeque
 
 class FakeAdbLoggerFactory : AdbLoggerFactory {
-    private val logEntries = Collections.synchronizedList(ArrayList<FakeAdbLoggerEntry>())
+    private val _logEntries = LinkedBlockingDeque<FakeAdbLoggerEntry>()
+    val logEntries: Collection<FakeAdbLoggerEntry>
+        get() = Collections.unmodifiableCollection(_logEntries)
 
     var minLevel = AdbLogger.Level.VERBOSE
 
@@ -37,7 +40,7 @@ class FakeAdbLoggerFactory : AdbLoggerFactory {
     }
 
     fun addEntry(entry: FakeAdbLoggerEntry) {
-        logEntries.add(entry)
+        _logEntries.add(entry)
         if (printToStdout) {
             val exceptionSuffix = entry.exception?.let { "- throwable=${entry.exception}" } ?: ""
             println("[${entry.logger.name}] ${entry.level} - ${entry.message}$exceptionSuffix")
