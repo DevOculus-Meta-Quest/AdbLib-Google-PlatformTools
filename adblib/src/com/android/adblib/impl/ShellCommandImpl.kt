@@ -57,6 +57,7 @@ internal class ShellCommandImpl<T>(
     private var commandOutputTimeout: Duration? = null
     private var commandOverride: ((String, Protocol) -> String)? = null
     private var stdinChannel: AdbInputChannel? = null
+    private var _shutdownOutputForLegacyShell: Boolean = true
     private var bufferSize: Int = session.property(AdbLibProperties.DEFAULT_SHELL_BUFFER_SIZE)
 
     override fun <U> withCollector(collector: ShellV2Collector<U>): ShellCommand<U> {
@@ -131,6 +132,11 @@ internal class ShellCommandImpl<T>(
         return this
     }
 
+    override fun shutdownOutputForLegacyShell(shutdownOutput: Boolean): ShellCommand<T> {
+        this._shutdownOutputForLegacyShell = shutdownOutput
+        return this
+    }
+
     override fun allowStripCrLfForLegacyShell(value: Boolean): ShellCommand<T> {
         this._allowStripCrLfForLegacyShell = value
         return this
@@ -186,7 +192,8 @@ internal class ShellCommandImpl<T>(
                             commandTimeout = commandTimeout,
                             commandOutputTimeout = commandOutputTimeout,
                             bufferSize = bufferSize,
-                            stripCrLf = false
+                            stripCrLf = false,
+                            shutdownOutput = false
                         )
                     ).createFlow()
                 }
@@ -201,7 +208,8 @@ internal class ShellCommandImpl<T>(
                             commandTimeout = commandTimeout,
                             commandOutputTimeout = commandOutputTimeout,
                             bufferSize = bufferSize,
-                            stripCrLf = false
+                            stripCrLf = false,
+                            shutdownOutput = _shutdownOutputForLegacyShell
                         )
                     ).createFlow()
                 }
@@ -216,7 +224,8 @@ internal class ShellCommandImpl<T>(
                             commandTimeout = commandTimeout,
                             commandOutputTimeout = commandOutputTimeout,
                             bufferSize = bufferSize,
-                            stripCrLf = stripCrLf.value()
+                            stripCrLf = stripCrLf.value(),
+                            shutdownOutput = _shutdownOutputForLegacyShell
                         )
                     ).createFlow()
                 }
@@ -241,7 +250,8 @@ internal class ShellCommandImpl<T>(
                         shellCollector = mapToLegacyCollector(collector),
                         stdinChannel = stdinChannel,
                         commandTimeout = commandTimeout,
-                        bufferSize = bufferSize
+                        bufferSize = bufferSize,
+                        shutdownOutput = _shutdownOutputForLegacyShell
                     )
                 }
                 Protocol.SHELL -> {
@@ -252,7 +262,8 @@ internal class ShellCommandImpl<T>(
                         stdinChannel = stdinChannel,
                         commandTimeout = commandTimeout,
                         bufferSize = bufferSize,
-                        stripCrLf = stripCrLf.value()
+                        stripCrLf = stripCrLf.value(),
+                        shutdownOutput = _shutdownOutputForLegacyShell
                     )
                 }
             }

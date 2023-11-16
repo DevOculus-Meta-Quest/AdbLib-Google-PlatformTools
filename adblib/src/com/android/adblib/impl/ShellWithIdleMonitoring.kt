@@ -58,7 +58,8 @@ internal abstract class ShellWithIdleMonitoring<T, TShellCollector>(
         val commandTimeout: Duration,
         val commandOutputTimeout: Duration,
         val bufferSize: Int,
-        val stripCrLf: Boolean
+        val stripCrLf: Boolean,
+        val shutdownOutput: Boolean
     )
 
     private val deviceServices: AdbDeviceServices
@@ -354,7 +355,8 @@ internal class LegacyExecWithIdleMonitoring<T>(
             forwardingCollector,
             parameters.stdinChannel,
             parameters.commandTimeout,
-            parameters.bufferSize
+            parameters.bufferSize,
+            shutdownOutput = parameters.shutdownOutput
         )
     }
 }
@@ -382,6 +384,7 @@ internal class LegacyShellWithIdleMonitoring<T>(
             parameters.stdinChannel,
             parameters.commandTimeout,
             parameters.bufferSize,
+            shutdownOutput = parameters.shutdownOutput,
             stripCrLf = parameters.stripCrLf
         )
     }

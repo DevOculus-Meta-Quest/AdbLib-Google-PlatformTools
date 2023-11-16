@@ -131,6 +131,14 @@ interface ShellCommand<T> {
     fun forceLegacyShell(): ShellCommand<T>
 
     /**
+     * When [execute] falls back to using the `shell v1` or `exec` protocols, this method
+     * allows to specify whether the device channel output is shutdown after piping `stdinChannel`.
+     *
+     * The default value is `true`.
+     */
+    fun shutdownOutputForLegacyShell(shutdownOutput: Boolean): ShellCommand<T>
+
+    /**
      * When [execute] falls back to using the [AdbDeviceServices.shell] service,
      * and when the device API <= 23, this option allows [execute] to automatically
      * convert '\r\n' newlines (as emitted by [AdbDeviceServices.shell]) to '\n'.
