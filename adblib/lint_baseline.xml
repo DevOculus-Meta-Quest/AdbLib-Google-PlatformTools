@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<issues format="6" by="lint 8.3.0-alpha13" type="baseline" client="" dependencies="true" name="" variant="all" version="8.3.0-alpha13">
+<issues format="6" by="lint 8.3.0-dev" type="baseline" client="" dependencies="true" name="" variant="all" version="8.3.0-dev">
 
     <issue
         id="StopShip"
@@ -274,17 +274,6 @@
             file="src/com/android/adblib/testing/FakeAdbHostServices.kt"
             line="237"
             column="9"/>
-    </issue>
-
-    <issue
-        id="AvoidByLazy"
-        message="Avoid `by lazy` for simple lazy initialization"
-        errorLine1="    private val monitorJob: Job by lazy {"
-        errorLine2="                                   ~~~~">
-        <location
-            file="src/com/android/adblib/impl/ConnectedDevicesTrackerImpl.kt"
-            line="36"
-            column="36"/>
     </issue>
 
 </issues>
