@@ -27,6 +27,7 @@ kotlin_library(
     srcs = glob([
         "src/**/*.kt",
     ]),
+    lint_baseline = "lint_baseline_adblib.xml",
     resource_strip_prefix = "tools/base/adblib",
     visibility = [
         "//tools/base/adb-proxy:__subpackages__",
@@ -58,6 +59,7 @@ kotlin_test(
     # So that we can use adblib "internal" classes/functions from Unit Tests
     friends = [":adblib"],
     jvm_flags = ["-Dtest.suite.jar=adblib.tests.jar"],
+    lint_baseline = "lint_baseline_tests.xml",
     test_class = "com.android.testutils.JarTestSuite",
     visibility = [
         "//tools/base/adblib-ddmlibcompatibility:__subpackages__",
