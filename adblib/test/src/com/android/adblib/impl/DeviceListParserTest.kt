@@ -19,16 +19,17 @@ import com.android.adblib.AdbHostServices
 import com.android.adblib.DeviceState
 import org.junit.Assert
 import org.junit.Test
+import java.nio.ByteBuffer
 
 class DeviceListParserTest {
 
     @Test
     fun parseShotFormatEmptyOutputWorks() {
         // Prepare
-        val parser = DeviceListParser()
+        val parser = DeviceListTextParser(AdbHostServices.DeviceInfoFormat.SHORT_FORMAT)
 
         // Act
-        val deviceList = parser.parse(AdbHostServices.DeviceInfoFormat.SHORT_FORMAT, "")
+        val deviceList = parser.parse(ByteBuffer.allocate(0))
 
         // Assert
         Assert.assertEquals(0, deviceList.size)
@@ -38,10 +39,10 @@ class DeviceListParserTest {
     @Test
     fun parseShotFormatEmptyLinesOutputWorks() {
         // Prepare
-        val parser = DeviceListParser()
+        val parser = DeviceListTextParser(AdbHostServices.DeviceInfoFormat.SHORT_FORMAT)
 
         // Act
-        val deviceList = parser.parse(AdbHostServices.DeviceInfoFormat.SHORT_FORMAT, "\n\n\n")
+        val deviceList = parser.parse("\n\n\n")
 
         // Assert
         Assert.assertEquals(0, deviceList.size)
@@ -51,11 +52,10 @@ class DeviceListParserTest {
     @Test
     fun parseShotFormatWorks() {
         // Prepare
-        val parser = DeviceListParser()
+        val parser = DeviceListTextParser(AdbHostServices.DeviceInfoFormat.SHORT_FORMAT)
 
         // Act
         val deviceList = parser.parse(
-            AdbHostServices.DeviceInfoFormat.SHORT_FORMAT,
             "HT10X6F12345\tdevice\n" +
                     "adb-FAAY0QWER-jBMEIf._adb-tls-connect._tcp.\tconnecting\n" +
                     "adb-HT10X6F12345-AvY0LF._adb-tls-connect._tcp.\toffline\n" +
@@ -121,10 +121,10 @@ class DeviceListParserTest {
     @Test
     fun parseLongFormatEmptyLinesOutputWorks() {
         // Prepare
-        val parser = DeviceListParser()
+        val parser = DeviceListTextParser(AdbHostServices.DeviceInfoFormat.LONG_FORMAT)
 
         // Act
-        val deviceList = parser.parse(AdbHostServices.DeviceInfoFormat.LONG_FORMAT, "\n\n\n")
+        val deviceList = parser.parse("\n\n\n")
 
         // Assert
         Assert.assertEquals(0, deviceList.size)
@@ -134,11 +134,10 @@ class DeviceListParserTest {
     @Test
     fun parseLongFormatWorks() {
         // Prepare
-        val parser = DeviceListParser()
+        val parser = DeviceListTextParser(AdbHostServices.DeviceInfoFormat.LONG_FORMAT)
 
         // Act
         val deviceList = parser.parse(
-            AdbHostServices.DeviceInfoFormat.LONG_FORMAT,
             "adb-FAAY0QWER-jBMEIf._adb-tls-connect._tcp. device product:crosshatch model:Pixel_3_XL device:crosshatch transport_id:1\n" +
                     "emulator-5554          device product:sdk_gphone_x86 model:Android_SDK_built_for_x86 device:generic_x86 transport_id:3\n" +
                     "emulator-5556          offline transport_id:4\n"
@@ -179,11 +178,10 @@ class DeviceListParserTest {
     @Test
     fun parseLongFormatWithErrorsWorks() {
         // Prepare
-        val parser = DeviceListParser()
+        val parser = DeviceListTextParser(AdbHostServices.DeviceInfoFormat.LONG_FORMAT)
 
         // Act
         val deviceList = parser.parse(
-            AdbHostServices.DeviceInfoFormat.LONG_FORMAT,
             "adb-FAAY0QWER-jBMEIf._adb-tls-connect._tcp. device product:crosshatch model:Pixel_3_XL device:crosshatch transport_id:15\n" +
                     "(no serial number)\n" +
                     "emulator-5554          device product:sdk_gphone_x86 model:Android_SDK_built_for_x86 device:generic_x86 transport_id:3\n" +
@@ -233,11 +231,10 @@ class DeviceListParserTest {
     @Test
     fun parseUnknownDeviceStateRetainsRawValue() {
         // Prepare
-        val parser = DeviceListParser()
+        val parser = DeviceListTextParser(AdbHostServices.DeviceInfoFormat.LONG_FORMAT)
 
         // Act
         val deviceList = parser.parse(
-            AdbHostServices.DeviceInfoFormat.LONG_FORMAT,
             "ser-aaa some-weird-state product:p model:foo device:bar transport_id:1\n"
         )
 

@@ -39,4 +39,11 @@ object AdbFeatures {
      * [AdbDeviceServices.shellV2] invocation is supported by the specified device.
      */
     const val SHELL_V2 = "shell_v2"
+
+    /**
+     * If the result of [AdbHostServices.features] contains this value, the
+     * device supports listening for device events via host:track-devices-proto-text
+     * and host:track-devices-proto-binary.
+     */
+    const val DEVICE_LIST_BINARY_PROTO = "devicetracker_proto_format"
 }

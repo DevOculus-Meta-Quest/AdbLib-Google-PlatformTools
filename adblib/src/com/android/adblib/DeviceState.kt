@@ -18,9 +18,25 @@ enum class DeviceState(val state: String) {
      * Device is connected but not generally available yet
      */
     OFFLINE("offline"),
+
+    /**
+     * Device running fastboot OS (fastboot) or userspace fastboot (fastbootd)
+     */
     BOOTLOADER("bootloader"),
+
+    /**
+     * What a device sees from its end of a Transport (adb host)
+     */
     HOST("host"),
+
+    /**
+     * Device with bootloader loaded but no ROM OS loaded (adbd)
+     */
     RECOVERY("recovery"),
+
+    /**
+     * Device running Android OS Rescue mode (minadbd rescue mode)
+     */
     RESCUE("rescue"),
 
     /**
@@ -34,8 +50,20 @@ enum class DeviceState(val state: String) {
      * Device is in "sideload" state either through `adb sideload` or recovery menu
      */
     SIDELOAD("sideload"),
+
+    /**
+     * ADB_VENDOR_KEYS exhausted, fell back to user prompt.
+     */
     UNAUTHORIZED("unauthorized"),
+
+    /**
+     * Authorizing with keys from ADB_VENDOR_KEYS
+     */
     AUTHORIZING("authorizing"),
+
+    /**
+     * Haven't received a response from the device yet
+     */
     CONNECTING("connecting"),
 
     /**
@@ -47,6 +75,11 @@ enum class DeviceState(val state: String) {
      * bootloader mode with is-userspace = true though `adb reboot fastboot`
      */
     FASTBOOTD("fastbootd"),
+
+    /**
+     * USB device that's detached from the adb server
+     */
+    DETACHED("detached"),
 
     /**
      * The terminal state of a ConnectedDevice. This is not emitted by ADB; this is emitted to

@@ -1,10 +1,14 @@
 package com.android.adblib.impl
 
 import com.android.adblib.AdbHostServices.DeviceInfoFormat
+import com.android.adblib.DeviceConnectionType
+import com.android.server.adb.protos.DevicesProto
 import com.android.adblib.DeviceInfo
 import com.android.adblib.DeviceList
+import com.android.adblib.DeviceState
 import com.android.adblib.ListWithErrors
 import com.android.adblib.utils.AdbProtocolUtils
+import java.nio.ByteBuffer
 import java.util.regex.Pattern
 
 /** ADB returns "(no serial number)" when serial number is not available  */
@@ -33,18 +37,89 @@ private val SHORT_LINE_PATTERN = Pattern.compile(
             "(" + SHORT_LINE_STATE_PATTERN + ")$"
 )
 
-internal class DeviceListParser {
+internal abstract class DeviceListParser {
 
-    fun parse(format: DeviceInfoFormat, responseText: CharSequence): DeviceList {
-        val oneLineParser = when (format) {
-            DeviceInfoFormat.SHORT_FORMAT -> this::parseOneShortFormatLine
-            DeviceInfoFormat.LONG_FORMAT -> this::parseOneLongFormatLine
+    abstract fun parse(buffer: ByteBuffer): DeviceList;
+
+}
+
+internal class DeviceListProtoParser : DeviceListParser() {
+
+    fun protoState(state: DevicesProto.ConnectionState): DeviceState {
+        return when (state) {
+            DevicesProto.ConnectionState.UNRECOGNIZED,
+            DevicesProto.ConnectionState.ANY -> DeviceState.UNKNOWN
+            DevicesProto.ConnectionState.CONNECTING -> DeviceState.CONNECTING
+            DevicesProto.ConnectionState.AUTHORIZING -> DeviceState.AUTHORIZING
+            DevicesProto.ConnectionState.UNAUTHORIZED -> DeviceState.UNAUTHORIZED
+            DevicesProto.ConnectionState.NOPERMISSION -> DeviceState.NO_PERMISSIONS
+            DevicesProto.ConnectionState.DETACHED-> DeviceState.DETACHED
+            DevicesProto.ConnectionState.OFFLINE-> DeviceState.OFFLINE
+            DevicesProto.ConnectionState.BOOTLOADER-> DeviceState.BOOTLOADER
+            DevicesProto.ConnectionState.DEVICE-> DeviceState.ONLINE
+            DevicesProto.ConnectionState.HOST-> DeviceState.HOST
+            DevicesProto.ConnectionState.RECOVERY-> DeviceState.RECOVERY
+            DevicesProto.ConnectionState.SIDELOAD-> DeviceState.SIDELOAD
+            DevicesProto.ConnectionState.RESCUE-> DeviceState.RESCUE
         }
-
-        return parserWorker(responseText, oneLineParser)
     }
 
-    private fun parserWorker(responseText: CharSequence, oneLineParser: OneLineParser): DeviceList {
+    override fun parse(buffer: ByteBuffer): DeviceList {
+        val result = ListWithErrors.Builder<DeviceInfo>()
+        val devices = DevicesProto.Devices.parseFrom(buffer)
+        devices.deviceList.forEach {
+            result.addEntry(DeviceInfo(
+                serialNumber = it.serial,
+                deviceState = protoState(it.state),
+                product = it.product,
+                model = it.model,
+                device = it.device,
+                transportId = it.transportId.toString(),
+                maxSpeed = it.maxSpeed,
+                negotiatedSpeed = it.negotiatedSpeed,
+                connectionType =  when (it.connectionType) {
+                    DevicesProto.ConnectionType.USB ->DeviceConnectionType.USB
+                    null,
+                    DevicesProto.ConnectionType.SOCKET,
+                    DevicesProto.ConnectionType.UNKNOWN,
+                    DevicesProto.ConnectionType.UNRECOGNIZED -> DeviceConnectionType.SOCKET
+                }
+            )
+            )
+        }
+        return result.build()
+    }
+}
+
+internal class DeviceListTextParser(val format: DeviceInfoFormat) : DeviceListParser() {
+    override fun parse(buffer: ByteBuffer): DeviceList {
+
+            val parser = when (format) {
+                DeviceInfoFormat.SHORT_FORMAT -> this::parseOneShortFormatLine
+                DeviceInfoFormat.LONG_FORMAT -> this::parseOneLongFormatLine
+                else -> throw IllegalStateException("Unsupported format: $format")
+            }
+
+            return parserWorker(buffer, parser)
+
+    }
+
+    private fun parserWorker(buffer: ByteBuffer, oneLineParser: OneLineParser): DeviceList {
+        return parserWorker(AdbProtocolUtils.byteBufferToString(buffer), oneLineParser)
+    }
+
+    fun parse(responseText: String): DeviceList {
+
+        val parser = when (format) {
+            DeviceInfoFormat.SHORT_FORMAT -> this::parseOneShortFormatLine
+            DeviceInfoFormat.LONG_FORMAT -> this::parseOneLongFormatLine
+            else -> throw IllegalStateException("Unsupported format: $format")
+        }
+        return parserWorker(responseText, parser)
+
+    }
+
+    private fun parserWorker(responseText: String, oneLineParser: OneLineParser): DeviceList {
         val result = ListWithErrors.Builder<DeviceInfo>()
 
         // Special case of <no devices>
@@ -139,7 +214,7 @@ internal class DeviceListParser {
                 model,
                 device,
                 transportId,
-                if (moreFields.isEmpty()) emptyMap() else moreFields
+                additionalFields = if (moreFields.isEmpty()) emptyMap() else moreFields
             )
         result.addEntry(deviceInfo)
     }

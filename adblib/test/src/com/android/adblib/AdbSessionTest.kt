@@ -15,10 +15,12 @@
  */
 package com.android.adblib
 
+import com.android.adblib.impl.SessionDeviceTracker
 import com.android.adblib.testingutils.CoroutineTestUtils.runBlockingWithTimeout
 import com.android.adblib.testingutils.FakeAdbServerProviderRule
 import com.android.fakeadbserver.DeviceState
 import com.android.fakeadbserver.devicecommandhandlers.SyncCommandHandler
+import com.android.fakeadbserver.hostcommandhandlers.ListDevicesCommandHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.TimeoutCancellationException
@@ -162,6 +164,41 @@ class AdbSessionTest {
         Assert.assertEquals("test2", device.model)
         Assert.assertEquals("model", device.device)
         Assert.assertEquals(fakeDevice.transportId.toString(), device.transportId)
+        Assert.assertNull(device.maxSpeed)
+        Assert.assertNull(device.negotiatedSpeed)
+        Assert.assertNull(device.connectionType)
+    }
+
+    @Test
+    fun testTraceDevicesWithProtobuffer(): Unit = runBlockingWithTimeout {
+        fakeAdb.fakeAdbServer.features = fakeAdb.fakeAdbServer.features.toMutableSet().also{
+            it.add(AdbFeatures.DEVICE_LIST_BINARY_PROTO)
+        }
+
+        val fakeDevice = fakeAdb.connectDevice(
+            "deviceID",
+            "manufacturer",
+            "deviceModel",
+            "FakePixel device",
+            "sdk",
+            DeviceState.HostConnectionType.USB
+        )
+        fakeDevice.deviceStatus = DeviceState.DeviceStatus.ONLINE
+
+        yieldUntil {
+            session.trackDevices().value.devices.isNotEmpty()
+        }
+        val device = session.trackDevices().value.devices.first()
+
+        Assert.assertEquals("deviceID", device.serialNumber)
+        Assert.assertEquals(com.android.adblib.DeviceState.ONLINE, device.deviceState)
+        Assert.assertEquals("manufacturer", device.product)
+        Assert.assertEquals("deviceModel", device.model)
+        Assert.assertEquals(fakeDevice.transportId.toString(), device.transportId)
+        Assert.assertEquals(ListDevicesCommandHandler.DEFAULT_SPEED, device.maxSpeed)
+        Assert.assertEquals(ListDevicesCommandHandler.DEFAULT_SPEED, device.negotiatedSpeed)
+        Assert.assertEquals(DeviceConnectionType.USB, device.connectionType)
+        Assert.assertEquals("FakePixel device", device.device)
     }
 
     @Test
@@ -179,7 +216,7 @@ class AdbSessionTest {
         fakeDevice.deviceStatus = DeviceState.DeviceStatus.ONLINE
 
         // Act
-        val flow = hostServices.session.trackDevices(retryDelay = Duration.ofMillis(100))
+        val flow = hostServices.session.trackDevices(retryDelay = Duration.ofSeconds(1))
 
         // Collect first list of devices, restart adb server, collect another list of devices
         val deviceListArray = ArrayList<TrackedDeviceList>()
@@ -290,8 +327,9 @@ class AdbSessionTest {
         }
         job.join()
 
-        // Assert
-        Assert.assertEquals(1, fakeAdb.channelProvider.createdChannels.size)
+        // Assert that get got two channels. One for features retrieval, the other to get the list
+        // of devices
+        Assert.assertEquals(2, fakeAdb.channelProvider.createdChannels.size)
     }
 
     @Test
@@ -360,7 +398,8 @@ class AdbSessionTest {
         }
 
         // Assert
-        Assert.assertEquals(1, fakeAdb.channelProvider.createdChannels.size)
+        // We expect two channels. One to retrieve features, the other one to get the devices list.
+        Assert.assertEquals(2, fakeAdb.channelProvider.createdChannels.size)
         Assert.assertEquals(5, exceptions.size)
     }
 

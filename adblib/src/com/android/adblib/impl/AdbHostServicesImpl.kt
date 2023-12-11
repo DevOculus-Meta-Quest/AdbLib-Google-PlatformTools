@@ -22,6 +22,7 @@ import com.android.adblib.impl.services.AdbServiceRunner
 import com.android.adblib.impl.services.OkayDataExpectation
 import com.android.adblib.impl.services.TrackDevicesService
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import java.io.EOFException
 import java.util.concurrent.TimeUnit
 
@@ -36,7 +37,6 @@ internal class AdbHostServicesImpl(
         get() = session.host
     private val logger = adbLogger(session)
     private val serviceRunner = AdbServiceRunner(session, channelProvider)
-    private val deviceParser = DeviceListParser()
     private val mdnsCheckParser = MdnsCheckParser()
     private val mdnsServicesParser = MdnsServiceListParser()
     private val trackDevicesService = TrackDevicesService(serviceRunner)
@@ -71,13 +71,19 @@ internal class AdbHostServicesImpl(
     }
 
     override suspend fun devices(format: DeviceInfoFormat): DeviceList {
+        if (format == DeviceInfoFormat.BINARY_PROTO_FORMAT) {
+            return trackDevices(format).first()
+        }
+
         val tracker = TimeoutTracker(host.timeProvider, timeout, unit)
         val service = when (format) {
             DeviceInfoFormat.SHORT_FORMAT -> "host:devices"
             DeviceInfoFormat.LONG_FORMAT -> "host:devices-l"
+            else -> throw IllegalStateException("Format $format is not supported")
         }
+
         val deviceListString = serviceRunner.runHostQuery(service, tracker)
-        return deviceParser.parse(format, deviceListString)
+        return DeviceListTextParser(format).parse(deviceListString)
     }
 
     override suspend fun kill() {

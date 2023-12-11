@@ -67,7 +67,12 @@ interface AdbHostServices {
         /**
          * [DeviceInfo.serialNumber], [DeviceInfo.deviceState], and additional fields, such as [DeviceInfo.transportId]
          */
-        LONG_FORMAT
+        LONG_FORMAT,
+
+        /**
+         * Binary protobuf output. See proto/devices.proto for details of the format
+         */
+        BINARY_PROTO_FORMAT,
     }
 
     /**

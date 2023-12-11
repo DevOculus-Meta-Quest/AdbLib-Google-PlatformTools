@@ -130,6 +130,17 @@ internal class AdbServiceRunner(
 
     /**
      * Executes a `<host-prefix>` query and returns the data after the `OKAY` response
+     * as a [ByteBuffer].
+     */
+    suspend fun runHostQueryBinary(service: String, timeout: TimeoutTracker): ByteBuffer {
+        val workBuffer = newResizableBuffer()
+        return startHostQueryImpl(workBuffer, device = null, service, timeout).use { channel ->
+            readLengthPrefixedData(channel, workBuffer, timeout)
+        }
+    }
+
+    /**
+     * Executes a `<host-prefix>` query and returns the data after the `OKAY` response
      * as a [String].
      */
     suspend fun runHostQuery(service: String, timeout: TimeoutTracker): String {
