@@ -19,6 +19,7 @@ import com.android.adblib.SystemNanoTimeProvider
 import com.android.adblib.utils.SystemNanoTime
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
+import java.util.Locale
 
 private const val INFINITE_TIMEOUT = Long.MAX_VALUE
 
@@ -89,6 +90,7 @@ internal class TimeoutTracker(
 
     override fun toString(): String {
         return String.format(
+            Locale.ROOT,
             "%s, %,.1f msec elapsed",
             remainingTimeoutToString(remainingMills, TimeUnit.MILLISECONDS),
             getElapsedTime(TimeUnit.MILLISECONDS).toDouble()
@@ -127,6 +129,7 @@ fun remainingTimeoutToString(timeout: Long, unit: TimeUnit): String {
         String.format("<INFINITE> msec remaining")
     } else {
         String.format(
+            Locale.ROOT,
             "%,.1f msec remaining",
             TimeUnit.MILLISECONDS.convert(timeout, unit).toDouble()
         )
