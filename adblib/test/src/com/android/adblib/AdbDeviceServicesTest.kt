@@ -2689,6 +2689,58 @@ class AdbDeviceServicesTest {
             Assert.fail("Should not be reached")
         }
 
+    @Test
+    fun testAbbCommandThrows_whenAbbIsNotSupported(): Unit = runBlockingWithTimeout {
+        // Prepare
+        val fakeDevice = addFakeDevice(fakeAdb, sdk = 19)
+        val deviceSelector = DeviceSelector.fromSerialNumber(fakeDevice.deviceId)
+        val appId = "com.foo.bar.app"
+
+        // Act
+        exceptionRule.expect(IllegalArgumentException::class.java)
+        deviceServices.abbCommand(deviceSelector, listOf("package", "path", appId))
+            .withTextCollector()
+            .execute()
+            .first()
+            .stdout
+
+        // Assert
+        Assert.fail("Should not be reached")
+    }
+
+    @Test
+    fun testAbbCommandWithStdin(): Unit = runBlockingWithTimeout {
+        // Prepare
+        val fakeDevice = addFakeDevice(fakeAdb)
+        val deviceSelector = DeviceSelector.fromSerialNumber(fakeDevice.deviceId)
+        val dataToSend = ByteArray(1_000_000)
+        val stdin = AdbInputStreamChannel(deviceServices.session.host, dataToSend.inputStream())
+
+        // Run a create session. It should create session 0 in the package manager
+        val sessionOutput = deviceServices.abbCommand(deviceSelector, listOf("package", "install-create"))
+            .withTextCollector()
+            .execute()
+            .first()
+            .stdout
+        val sessionID = extractSessionID(sessionOutput)
+
+        // Act
+        val shellOutput =
+            deviceServices.abbCommand(
+                deviceSelector,
+                listOf("package", "install-write", "-S", dataToSend.size.toString(), sessionID, "-")
+            )
+                .withTextCollector()
+                .withStdin(stdin)
+                .execute()
+                .first()
+
+        // Assert
+        Assert.assertEquals("Success: streamed ${dataToSend.size} bytes\n", shellOutput.stdout)
+        Assert.assertEquals("", shellOutput.stderr)
+        Assert.assertEquals(0, shellOutput.exitCode)
+    }
+
     /**
      * Similar to [Flow.take], but allows for a [block] to process each collected element.
      */

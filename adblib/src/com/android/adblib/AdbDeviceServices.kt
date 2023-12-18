@@ -1,6 +1,7 @@
 package com.android.adblib
 
 import com.android.adblib.AdbLibProperties.DEFAULT_SHELL_BUFFER_SIZE
+import com.android.adblib.impl.AbbCommandImpl
 import com.android.adblib.impl.DevicePropertiesImpl
 import com.android.adblib.impl.ShellCommandImpl
 import com.android.adblib.utils.AdbProtocolUtils
@@ -629,6 +630,27 @@ fun AdbDeviceServices.shellAsLineBatches(
         .withCommandTimeout(commandTimeout)
         .withBufferSize(bufferSize)
         .execute()
+}
+
+/**
+ * Creates a [AbbCommand] to [execute][AbbCommand.execute] an abb command on a
+ * given [device].
+ *
+ * The returned [AbbCommand] only becomes fully typed when [ShellCommand.withCollector]
+ * is invoked.
+ *
+ * Example:
+ * ```
+ *     val stdout: String = abbCommand(device, listOf("package", "list", "packages"))
+ *         .withCollector(TextShellV2Collector())
+ *         .withCommandTimeout(Duration.ofSeconds(5))
+ *         .execute()
+ *         .first()
+ *         .stdout
+ * ```
+ */
+fun AdbDeviceServices.abbCommand(device: DeviceSelector, args: List<String>): AbbCommand<*> {
+    return AbbCommandImpl<Any>(this.session, device, args)
 }
 
 /**

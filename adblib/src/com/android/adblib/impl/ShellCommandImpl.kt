@@ -22,7 +22,6 @@ import com.android.adblib.AdbSession
 import com.android.adblib.DeviceSelector
 import com.android.adblib.INFINITE_DURATION
 import com.android.adblib.ShellCollector
-import com.android.adblib.ShellCollectorCapabilities
 import com.android.adblib.ShellCommand
 import com.android.adblib.ShellCommand.Protocol
 import com.android.adblib.ShellV2Collector
@@ -33,11 +32,9 @@ import com.android.adblib.impl.ShellWithIdleMonitoring.Parameters
 import com.android.adblib.property
 import com.android.adblib.utils.SuspendingLazy
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.FlowCollector
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
-import java.nio.ByteBuffer
 import java.time.Duration
 
 internal class ShellCommandImpl<T>(
@@ -72,7 +69,7 @@ internal class ShellCommandImpl<T>(
         @Suppress("UNCHECKED_CAST")
         val result = this as ShellCommandImpl<U>
 
-        result.collector = mapToShellV2Collector(collector)
+        result.collector = ShellCommandHelpers.mapToShellV2Collector(collector)
         return result
     }
 
@@ -203,7 +200,7 @@ internal class ShellCommandImpl<T>(
                             deviceServices = session.deviceServices,
                             device = device,
                             command = command,
-                            shellCollector = mapToLegacyCollector(collector),
+                            shellCollector = ShellCommandHelpers.mapToLegacyCollector(collector),
                             stdinChannel = stdinChannel,
                             commandTimeout = commandTimeout,
                             commandOutputTimeout = commandOutputTimeout,
@@ -219,7 +216,7 @@ internal class ShellCommandImpl<T>(
                             deviceServices = session.deviceServices,
                             device = device,
                             command = command,
-                            shellCollector = mapToLegacyCollector(collector),
+                            shellCollector = ShellCommandHelpers.mapToLegacyCollector(collector),
                             stdinChannel = stdinChannel,
                             commandTimeout = commandTimeout,
                             commandOutputTimeout = commandOutputTimeout,
@@ -247,7 +244,7 @@ internal class ShellCommandImpl<T>(
                     session.deviceServices.exec(
                         device = device,
                         command = command,
-                        shellCollector = mapToLegacyCollector(collector),
+                        shellCollector = ShellCommandHelpers.mapToLegacyCollector(collector),
                         stdinChannel = stdinChannel,
                         commandTimeout = commandTimeout,
                         bufferSize = bufferSize,
@@ -258,7 +255,7 @@ internal class ShellCommandImpl<T>(
                     session.deviceServices.shell(
                         device = device,
                         command = command,
-                        shellCollector = mapToLegacyCollector(collector),
+                        shellCollector = ShellCommandHelpers.mapToLegacyCollector(collector),
                         stdinChannel = stdinChannel,
                         commandTimeout = commandTimeout,
                         bufferSize = bufferSize,
@@ -286,71 +283,5 @@ internal class ShellCommandImpl<T>(
             else -> throw IllegalArgumentException("No compatible shell protocol is supported or allowed")
         }
         return protocol
-    }
-
-    private fun <T> mapToLegacyCollector(shellV2Collector: ShellV2Collector<T>): ShellCollector<T> {
-        return if (shellV2Collector is LegacyShellToShellV2Collector) {
-            shellV2Collector.legacyShellCollector
-        } else {
-            ShellV2ToLegacyCollector(shellV2Collector)
-        }
-    }
-
-    private fun <T> mapToShellV2Collector(shellCollector: ShellCollector<T>): ShellV2Collector<T> {
-        return if (shellCollector is ShellV2ToLegacyCollector) {
-            shellCollector.shellV2Collector
-        } else {
-            return LegacyShellToShellV2Collector(shellCollector)
-        }
-    }
-
-    private val <T> ShellV2Collector<T>.isSingleOutputCollector: Boolean
-        get() {
-            return (this as? ShellCollectorCapabilities)?.isSingleOutput ?: false
-        }
-
-    class LegacyShellToShellV2Collector<T>(
-        internal val legacyShellCollector: ShellCollector<T>
-    ) : ShellV2Collector<T>, ShellCollectorCapabilities {
-
-        override val isSingleOutput: Boolean
-            get() = (legacyShellCollector as? ShellCollectorCapabilities)?.isSingleOutput ?: false
-
-        override suspend fun start(collector: FlowCollector<T>) {
-            legacyShellCollector.start(collector)
-        }
-
-        override suspend fun collectStdout(collector: FlowCollector<T>, stdout: ByteBuffer) {
-            legacyShellCollector.collect(collector, stdout)
-        }
-
-        override suspend fun collectStderr(collector: FlowCollector<T>, stderr: ByteBuffer) {
-            legacyShellCollector.collect(collector, stderr)
-        }
-
-        override suspend fun end(collector: FlowCollector<T>, exitCode: Int) {
-            legacyShellCollector.end(collector)
-        }
-
-    }
-
-    class ShellV2ToLegacyCollector<T>(
-        internal val shellV2Collector: ShellV2Collector<T>
-    ) : ShellCollector<T>, ShellCollectorCapabilities {
-
-        override val isSingleOutput: Boolean
-            get() = (shellV2Collector as? ShellCollectorCapabilities)?.isSingleOutput ?: false
-
-        override suspend fun start(collector: FlowCollector<T>) {
-            shellV2Collector.start(collector)
-        }
-
-        override suspend fun collect(collector: FlowCollector<T>, stdout: ByteBuffer) {
-            shellV2Collector.collectStdout(collector, stdout)
-        }
-
-        override suspend fun end(collector: FlowCollector<T>) {
-            shellV2Collector.end(collector, 0)
-        }
     }
 }
