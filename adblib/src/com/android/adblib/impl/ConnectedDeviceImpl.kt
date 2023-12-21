@@ -40,8 +40,8 @@ internal class ConnectedDeviceImpl(
     override val deviceInfoFlow = deviceInfoStateFlow.asStateFlow()
 
     override fun close() {
-        // Ensure last state we expose is "offline"
-        deviceInfoStateFlow.update { it.copy(deviceState = DeviceState.OFFLINE) }
+        // Ensure last state we expose is "disconnected"
+        deviceInfoStateFlow.update { it.copy(deviceState = DeviceState.DISCONNECTED) }
         cacheImpl.close()
     }
 

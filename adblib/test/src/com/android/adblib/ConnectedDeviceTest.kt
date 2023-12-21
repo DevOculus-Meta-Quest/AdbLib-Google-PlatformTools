@@ -102,8 +102,8 @@ class ConnectedDeviceTest {
         connectedDevice.session.connectedDevicesTracker.connectedDevices.first { it.isEmpty() }
 
         // Assert
-        Assert.assertEquals(DeviceState.OFFLINE, connectedDevice.deviceInfo.deviceState)
-        Assert.assertTrue(connectedDevice.isOffline)
+        Assert.assertEquals(DeviceState.DISCONNECTED, connectedDevice.deviceInfo.deviceState)
+        Assert.assertFalse(connectedDevice.isOnline)
         Assert.assertFalse(connectedDevice.cache.scope.isActive)
     }
 

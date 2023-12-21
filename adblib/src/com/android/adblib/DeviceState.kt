@@ -47,7 +47,13 @@ enum class DeviceState(val state: String) {
      * bootloader mode with is-userspace = true though `adb reboot fastboot`
      */
     FASTBOOTD("fastbootd"),
-    DISCONNECTED("disconnected");
+
+    /**
+     * The terminal state of a ConnectedDevice. This is not emitted by ADB; this is emitted to
+     * signal the end of the device session. If the device reconnects, it will have a new
+     * ConnectedDevice instance.
+     */
+    DISCONNECTED("[disconnected]");
 
     companion object {
         /**

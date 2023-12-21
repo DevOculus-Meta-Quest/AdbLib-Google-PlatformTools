@@ -227,7 +227,7 @@ class ConnectedDevicesTrackerTest {
         Assert.assertEquals("1234", connectedDevice.serialNumber)
         Assert.assertFalse(connectedDevice.scope.isActive)
         Assert.assertEquals(
-            com.android.adblib.DeviceState.OFFLINE,
+            com.android.adblib.DeviceState.DISCONNECTED,
             connectedDevice.deviceInfoFlow.value.deviceState
         )
         Assert.assertEquals(10, connectedDevice.cache.getOrPut(cacheKey) { 10 })
