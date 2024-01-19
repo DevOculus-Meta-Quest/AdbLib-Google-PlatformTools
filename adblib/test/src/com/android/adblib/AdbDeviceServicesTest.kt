@@ -71,6 +71,8 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.TimeoutException
 import java.util.regex.Matcher
 import java.util.regex.Pattern
+import kotlin.time.DurationUnit
+import kotlin.time.toDuration
 
 class AdbDeviceServicesTest {
 
@@ -2739,6 +2741,86 @@ class AdbDeviceServicesTest {
         Assert.assertEquals("Success: streamed ${dataToSend.size} bytes\n", shellOutput.stdout)
         Assert.assertEquals("", shellOutput.stderr)
         Assert.assertEquals(0, shellOutput.exitCode)
+    }
+
+    @Test
+    fun testAbbCommandWithMonitoringCanDetectInactiveCommand(): Unit = runBlockingWithTimeout {
+        // Prepare
+        val fakeDevice = addFakeDevice(fakeAdb)
+        fakeDevice.delayStdout = 10000.toDuration(DurationUnit.MILLISECONDS)
+        val deviceSelector = DeviceSelector.fromSerialNumber(fakeDevice.deviceId)
+        // Act
+        exceptionRule.expect(TimeoutException::class.java)
+        /*val ignored = */deviceServices.abbCommand(deviceSelector, listOf("package", "-l"))
+                .forceShellV2Protocol()
+                .withLegacyCollector(TextShellCollector())
+                .withCommandOutputTimeout(Duration.ofMillis(100))
+                .execute()
+                .first()
+
+        // Assert
+        Assert.fail() // Should not reach
+    }
+
+    @Test
+    fun testAbbExecCommandWithMonitoringCanDetectInactiveCommand(): Unit = runBlockingWithTimeout {
+        // Prepare
+        val fakeDevice = addFakeDevice(fakeAdb)
+        fakeDevice.delayStdout = 10000.toDuration(DurationUnit.MILLISECONDS)
+        val deviceSelector = DeviceSelector.fromSerialNumber(fakeDevice.deviceId)
+        // Act
+        exceptionRule.expect(TimeoutException::class.java)
+        /*val ignored = */deviceServices.abbCommand(deviceSelector, listOf("package", "-l"))
+                .forceExecProtocol()
+                .withLegacyCollector(TextShellCollector())
+                .withCommandOutputTimeout(Duration.ofMillis(100))
+                .execute()
+                .first()
+
+        // Assert
+        Assert.fail() // Should not reach
+    }
+
+    @Test
+    fun testAbbWithMonitoringWorksAsLongAsTimeoutIsNotExceeded(): Unit = runBlockingWithTimeout {
+        // Prepare
+        val fakeDevice = addFakeDevice(fakeAdb)
+        fakeDevice.delayStdout = 10.toDuration(DurationUnit.MILLISECONDS)
+        val deviceSelector = DeviceSelector.fromSerialNumber(fakeDevice.deviceId)
+
+        // Act
+        val text =
+            deviceServices.abbCommand(deviceSelector, listOf("package", "-l"))
+                .forceShellV2Protocol()
+                .withLegacyCollector(TextShellCollector())
+                // We have an "inactivity" timeout of 100 msec, but each read takes only 10 msec
+                .withCommandOutputTimeout(Duration.ofMillis(100))
+                .execute()
+                .first()
+
+        // Assert
+        Assert.assertEquals("package:one\npackage:two\npackage:three\n", text)
+    }
+
+    @Test
+    fun testAbbExecWithMonitoringWorksAsLongAsTimeoutIsNotExceeded(): Unit = runBlockingWithTimeout {
+        // Prepare
+        val fakeDevice = addFakeDevice(fakeAdb)
+        fakeDevice.delayStdout = 10.toDuration(DurationUnit.MILLISECONDS)
+        val deviceSelector = DeviceSelector.fromSerialNumber(fakeDevice.deviceId)
+
+        // Act
+        val text =
+            deviceServices.abbCommand(deviceSelector, listOf("package", "-l"))
+                .forceExecProtocol()
+                .withLegacyCollector(TextShellCollector())
+                // We have an "inactivity" timeout of 100 msec, but each read takes only 10 msec
+                .withCommandOutputTimeout(Duration.ofMillis(100))
+                .execute()
+                .first()
+
+        // Assert
+        Assert.assertEquals("package:one\npackage:two\npackage:three\n", text)
     }
 
     /**

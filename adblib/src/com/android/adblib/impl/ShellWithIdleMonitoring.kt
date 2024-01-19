@@ -42,17 +42,17 @@ import java.nio.ByteBuffer
 import java.time.Duration
 import java.util.concurrent.TimeoutException
 
-internal abstract class ShellWithIdleMonitoring<T, TShellCollector>(
-    private val parameters: Parameters<TShellCollector>
+internal abstract class ShellWithIdleMonitoring<T, TShellCollector, Command>(
+    private val parameters: Parameters<TShellCollector, Command>
 ) {
 
     /**
      * Convenience class used to pass all parameters in one go
      */
-    class Parameters<TShellCollector>(
+    class Parameters<TShellCollector, Command>(
         val deviceServices: AdbDeviceServices,
         val device: DeviceSelector,
-        val command: String,
+        val command: Command,
         val shellCollector: TShellCollector,
         val stdinChannel: AdbInputChannel?,
         val commandTimeout: Duration,
@@ -105,7 +105,7 @@ internal abstract class ShellWithIdleMonitoring<T, TShellCollector>(
     ): TShellCollector
 
     abstract fun execute(
-        parameters: Parameters<TShellCollector>,
+        parameters: Parameters<TShellCollector, Command>,
         forwardingCollector: TShellCollector
     ): Flow<T>
 
@@ -307,8 +307,8 @@ internal abstract class ShellWithIdleMonitoring<T, TShellCollector>(
 }
 
 internal class ShellV2WithIdleMonitoring<T>(
-    parameters: Parameters<ShellV2Collector<T>>
-) : ShellWithIdleMonitoring<T, ShellV2Collector<T>>(parameters) {
+    parameters: Parameters<ShellV2Collector<T>, String>
+) : ShellWithIdleMonitoring<T, ShellV2Collector<T>, String>(parameters) {
 
     override fun createForwardingCollector(
       host: AdbSessionHost,
@@ -319,7 +319,7 @@ internal class ShellV2WithIdleMonitoring<T>(
     }
 
     override fun execute(
-        parameters: Parameters<ShellV2Collector<T>>,
+        parameters: Parameters<ShellV2Collector<T>, String>,
         forwardingCollector: ShellV2Collector<T>
     ): Flow<T> {
         return parameters.deviceServices.shellV2(
@@ -334,8 +334,8 @@ internal class ShellV2WithIdleMonitoring<T>(
 }
 
 internal class LegacyExecWithIdleMonitoring<T>(
-    parameters: Parameters<ShellCollector<T>>
-) : ShellWithIdleMonitoring<T, ShellCollector<T>>(parameters) {
+    parameters: Parameters<ShellCollector<T>, String>
+) : ShellWithIdleMonitoring<T, ShellCollector<T>, String>(parameters) {
 
     override fun createForwardingCollector(
       host: AdbSessionHost,
@@ -346,7 +346,7 @@ internal class LegacyExecWithIdleMonitoring<T>(
     }
 
     override fun execute(
-        parameters: Parameters<ShellCollector<T>>,
+        parameters: Parameters<ShellCollector<T>, String>,
         forwardingCollector: ShellCollector<T>
     ): Flow<T> {
         return parameters.deviceServices.exec(
@@ -362,8 +362,8 @@ internal class LegacyExecWithIdleMonitoring<T>(
 }
 
 internal class LegacyShellWithIdleMonitoring<T>(
-    parameters: Parameters<ShellCollector<T>>
-) : ShellWithIdleMonitoring<T, ShellCollector<T>>(parameters) {
+    parameters: Parameters<ShellCollector<T>, String>
+) : ShellWithIdleMonitoring<T, ShellCollector<T>, String>(parameters) {
 
     override fun createForwardingCollector(
       host: AdbSessionHost,
@@ -374,7 +374,7 @@ internal class LegacyShellWithIdleMonitoring<T>(
     }
 
     override fun execute(
-        parameters: Parameters<ShellCollector<T>>,
+        parameters: Parameters<ShellCollector<T>, String>,
         forwardingCollector: ShellCollector<T>
     ): Flow<T> {
         return parameters.deviceServices.shell(
@@ -386,6 +386,61 @@ internal class LegacyShellWithIdleMonitoring<T>(
             parameters.bufferSize,
             shutdownOutput = parameters.shutdownOutput,
             stripCrLf = parameters.stripCrLf
+        )
+    }
+}
+
+internal class AbbWithIdleMonitoring<T>(
+    parameters: Parameters<ShellV2Collector<T>, List<String>>
+) : ShellWithIdleMonitoring<T, ShellV2Collector<T>, List<String>>(parameters) {
+
+    override fun createForwardingCollector(
+        host: AdbSessionHost,
+        heartbeat: HeartbeatRecorder,
+        delegate: ShellV2Collector<T>
+    ): ShellV2Collector<T> {
+        return ForwardingShellV2Collector(host, heartbeat, delegate)
+    }
+
+    override fun execute(
+        parameters: Parameters<ShellV2Collector<T>, List<String>>,
+        forwardingCollector: ShellV2Collector<T>
+    ): Flow<T> {
+        return parameters.deviceServices.abb(
+            device = parameters.device,
+            args = parameters.command,
+            shellCollector = forwardingCollector,
+            stdinChannel = parameters.stdinChannel,
+            commandTimeout = parameters.commandTimeout,
+            bufferSize = parameters.bufferSize
+        )
+    }
+}
+
+internal class AbbExecWithIdleMonitoring<T>(
+    parameters: Parameters<ShellCollector<T>, List<String>>
+) : ShellWithIdleMonitoring<T, ShellCollector<T>, List<String>>(parameters) {
+
+    override fun createForwardingCollector(
+        host: AdbSessionHost,
+        heartbeat: HeartbeatRecorder,
+        delegate: ShellCollector<T>
+    ): ShellCollector<T> {
+        return ForwardingShellCollector(host, heartbeat, delegate)
+    }
+
+    override fun execute(
+        parameters: Parameters<ShellCollector<T>, List<String>>,
+        forwardingCollector: ShellCollector<T>
+    ): Flow<T> {
+        return parameters.deviceServices.abb_exec(
+            device = parameters.device,
+            args = parameters.command,
+            shellCollector = forwardingCollector,
+            stdinChannel = parameters.stdinChannel,
+            commandTimeout = parameters.commandTimeout,
+            bufferSize = parameters.bufferSize,
+            shutdownOutput = parameters.shutdownOutput
         )
     }
 }

@@ -146,32 +146,69 @@ internal class AbbCommandImpl<T>(
         val collector = collector ?: throw IllegalArgumentException("Collector is not set")
 
         val protocol = pickProtocol()
-        // TODO: Implement support for `commandOutputTimeout`
         val commandOutputTimeout = this.commandOutputTimeout
 
-        logger.debug { "Executing abb command with protocol=$protocol, args=$args" }
-        return when (protocol) {
-            Protocol.ABB -> {
-                session.deviceServices.abb(
-                    device = device,
-                    args = args,
-                    shellCollector = collector,
-                    stdinChannel = stdinChannel,
-                    commandTimeout = commandTimeout,
-                    bufferSize = bufferSize
-                )
+        return if (commandOutputTimeout != null) {
+            logger.debug { "Executing abb command with protocol=$protocol and commandOutputTimeout=$commandOutputTimeout, args=$args" }
+            when (protocol) {
+                Protocol.ABB -> {
+                    AbbWithIdleMonitoring(
+                        ShellWithIdleMonitoring.Parameters(
+                            deviceServices = session.deviceServices,
+                            device = device,
+                            command = args,
+                            shellCollector = collector,
+                            stdinChannel = stdinChannel,
+                            commandTimeout = commandTimeout,
+                            commandOutputTimeout = commandOutputTimeout,
+                            bufferSize = bufferSize,
+                            stripCrLf = false,
+                            shutdownOutput = false
+                        )
+                    ).createFlow()
+                }
+                Protocol.ABB_EXEC -> {
+                    AbbExecWithIdleMonitoring(
+                        ShellWithIdleMonitoring.Parameters(
+                            deviceServices = session.deviceServices,
+                            device = device,
+                            command = args,
+                            shellCollector = ShellCommandHelpers.mapToLegacyCollector(collector),
+                            stdinChannel = stdinChannel,
+                            commandTimeout = commandTimeout,
+                            commandOutputTimeout = commandOutputTimeout,
+                            bufferSize = bufferSize,
+                            stripCrLf = false,
+                            shutdownOutput = _shutdownOutputForExecProtocol
+                        )
+                    ).createFlow()
+                }
             }
+        } else {
+            logger.debug { "Executing abb command with protocol=$protocol, args=$args" }
+            return when (protocol) {
+                Protocol.ABB -> {
+                    session.deviceServices.abb(
+                        device = device,
+                        args = args,
+                        shellCollector = collector,
+                        stdinChannel = stdinChannel,
+                        commandTimeout = commandTimeout,
+                        bufferSize = bufferSize
+                    )
+                }
 
-            Protocol.ABB_EXEC -> {
-                session.deviceServices.abb_exec(
-                    device = device,
-                    args = args,
-                    shellCollector = ShellCommandHelpers.mapToLegacyCollector(collector),
-                    stdinChannel = stdinChannel,
-                    commandTimeout = commandTimeout,
-                    bufferSize = bufferSize,
-                    shutdownOutput = _shutdownOutputForExecProtocol
-                )
+                Protocol.ABB_EXEC -> {
+                    session.deviceServices.abb_exec(
+                        device = device,
+                        args = args,
+                        shellCollector = ShellCommandHelpers.mapToLegacyCollector(collector),
+                        stdinChannel = stdinChannel,
+                        commandTimeout = commandTimeout,
+                        bufferSize = bufferSize,
+                        shutdownOutput = _shutdownOutputForExecProtocol
+                    )
+                }
             }
         }
     }
