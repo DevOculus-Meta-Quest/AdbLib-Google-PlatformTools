@@ -35,7 +35,8 @@ import kotlin.math.min
 internal class AdbBufferedInputChannelImpl(
   session: AdbSession,
   private val input: AdbInputChannel,
-  bufferSize: Int = DEFAULT_BUFFER_SIZE
+  bufferSize: Int = DEFAULT_BUFFER_SIZE,
+  private val closeInputChannel: Boolean = true
 ) : AdbInputChannel {
 
     private val logger = adbLogger(session)
@@ -117,6 +118,8 @@ internal class AdbBufferedInputChannelImpl(
     }
 
     override fun close() {
-        input.close()
+        if (closeInputChannel) {
+            input.close()
+        }
     }
 }

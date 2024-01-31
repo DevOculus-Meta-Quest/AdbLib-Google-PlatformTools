@@ -189,6 +189,27 @@ class AdbBufferedInputChannelTest {
         Assert.fail("Should not reach")
     }
 
+    @Test
+    fun canControlCloseInputChannelReadBehavior(): Unit = runBlockingWithTimeout {
+        // Prepare
+        val session = registerCloseable(TestingAdbSession())
+        val channelFactory = AdbChannelFactoryImpl(session)
+        val input1 = TestingInputChannel(length = 1_000, readDelay = Duration.ofSeconds(10))
+        val input2 = TestingInputChannel(length = 1_000, readDelay = Duration.ofSeconds(10))
+        val bufferedChannel1 = channelFactory.createBufferedInputChannel(input1, 1_000)
+        val bufferedChannel2 =
+            channelFactory.createBufferedInputChannel(input1, 1_000, closeInputChannel = false)
+
+        // Act
+        bufferedChannel1.close()
+        bufferedChannel2.close()
+
+        // Assert
+        // The default behavior is for inputChannel to be closed when BufferedInputChannel is closed
+        Assert.assertTrue(input1.closed)
+        Assert.assertFalse(input2.closed)
+    }
+
     private class TestingInputChannel(
         val length: Int,
         private val throwOnEOF: Boolean = false,

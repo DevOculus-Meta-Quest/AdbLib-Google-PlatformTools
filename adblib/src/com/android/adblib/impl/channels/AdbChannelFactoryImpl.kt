@@ -94,8 +94,12 @@ internal class AdbChannelFactoryImpl(private val session: AdbSession) : AdbChann
         return AdbPipedInputChannelImpl(session, bufferSize)
     }
 
-    override fun createBufferedInputChannel(input: AdbInputChannel, bufferSize: Int): AdbInputChannel {
-        return AdbBufferedInputChannelImpl(session, input, bufferSize)
+    override fun createBufferedInputChannel(
+        input: AdbInputChannel,
+        bufferSize: Int,
+        closeInputChannel: Boolean
+    ): AdbInputChannel {
+        return AdbBufferedInputChannelImpl(session, input, bufferSize, closeInputChannel)
     }
 
     override fun createReadAheadChannel(

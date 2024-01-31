@@ -401,7 +401,12 @@ internal class AdbDeviceServicesImpl(
         val logger = this.logger.withPrefix("\"${service}\" - ")
         logger.debug { "Collecting shell protocol packets" }
         shellCollector.start(flowCollector)
-        session.channelFactory.createBufferedInputChannel(channel, bufferSize).use { bufferInputChannel ->
+        // Note that we do not close `bufferInputChannel` as we don't want it to close the wrapped `channel`
+        session.channelFactory.createBufferedInputChannel(
+            channel,
+            bufferSize,
+            closeInputChannel = false
+        ).use { bufferInputChannel ->
             val shellProtocol = ShellV2ProtocolReader(bufferInputChannel, workBuffer, bufferSize)
 
             while (true) {

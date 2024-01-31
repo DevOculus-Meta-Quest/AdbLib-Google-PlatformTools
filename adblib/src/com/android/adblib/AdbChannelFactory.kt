@@ -100,11 +100,13 @@ interface AdbChannelFactory {
      * This class is similar to [BufferedInputStream], but for [AdbInputChannel] instead of
      * [InputStream].
      *
-     * The [input] channel is closed when this channel is [closed][AdbInputChannel.close].
+     * If [closeInputChannel] is set to `true` then the [input] channel is closed when this channel
+     * is [closed][AdbInputChannel.close].
      */
     fun createBufferedInputChannel(
         input: AdbInputChannel,
-        bufferSize: Int = DEFAULT_CHANNEL_BUFFER_SIZE
+        bufferSize: Int = DEFAULT_CHANNEL_BUFFER_SIZE,
+        closeInputChannel: Boolean = true
     ): AdbInputChannel
 
     /**
