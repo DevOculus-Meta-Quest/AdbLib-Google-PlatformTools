@@ -285,4 +285,10 @@ suspend fun AdbHostServices.availableFeatures(device: DeviceSelector): List<Stri
     }
 }
 
+/**
+ * Returns true if the device with a specified serial number is known to the ADB Server.
+ */
+suspend fun AdbHostServices.isKnownDevice(serialNumber: String) =
+    devices().any { it.serialNumber == serialNumber }
+
 private val availableFeaturesKey = CoroutineScopeCache.Key<List<String>>("availableFeaturesKey")

@@ -822,4 +822,29 @@ class AdbHostServicesTest {
         // Assert
         Assert.assertTrue(job.isCompleted)
     }
+
+    @Test
+    fun testIsKnownDevice() {
+        // Prepare
+        val fakeDevice =
+            fakeAdb.connectDevice(
+                "1234",
+                "test1",
+                "test2",
+                "model",
+                "sdk",
+                DeviceState.HostConnectionType.USB
+            )
+        fakeDevice.deviceStatus = DeviceState.DeviceStatus.ONLINE
+
+        // Act/Assert
+        Assert.assertTrue(runBlocking { hostServices.isKnownDevice("1234") })
+        Assert.assertFalse(runBlocking { hostServices.isKnownDevice("unknown1234") })
+    }
+
+    @Test
+    fun testIsKnownDevice_returnsFalse_whenNoDevicesAreConnected() {
+        // Act/Assert
+        Assert.assertFalse(runBlocking { hostServices.isKnownDevice("1234") })
+    }
 }
