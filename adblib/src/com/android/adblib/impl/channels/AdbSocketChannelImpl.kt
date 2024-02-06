@@ -10,6 +10,7 @@ import java.io.IOException
 import java.net.InetSocketAddress
 import java.nio.ByteBuffer
 import java.nio.channels.AsynchronousSocketChannel
+import java.nio.channels.ClosedChannelException
 import java.util.concurrent.TimeUnit
 
 /**
@@ -59,7 +60,14 @@ internal class AdbSocketChannelImpl(
         get() = socketChannel.isOpen
 
     override fun toString(): String {
-        return "AdbSocketChannelImpl(${socketChannel.remoteAddress})"
+        val remoteAddress = try {
+            socketChannel.remoteAddress
+        } catch (e: ClosedChannelException) {
+            "<channel-closed>"
+        } catch (e: Throwable) {
+            "<error: $e>"
+        }
+        return "AdbSocketChannelImpl(remote=$remoteAddress)"
     }
 
     @Throws(Exception::class)
