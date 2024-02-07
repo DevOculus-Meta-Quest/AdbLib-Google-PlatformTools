@@ -25,8 +25,6 @@ package com.android.adblib
  *
  * * [close] is meant to perform an immediate cleanup (e.g. cancel all pending async I/O),
  * and should be called even in the presence of coroutine cancellation/exception.
- *
- * @see useShutdown for proper usage of [AutoShutdown] resources
  */
 interface AutoShutdown : AutoCloseable {
     /**
@@ -34,46 +32,7 @@ interface AutoShutdown : AutoCloseable {
      * termination.
      *
      * Note: If an exception is thrown during [shutdown], the [close] should still be
-     * called to ensure any remaining resource cleanup if necessary. This behavior is
-     * implemented by the [useShutdown] extension.
+     * called to ensure any remaining resource cleanup if necessary.
      */
     suspend fun shutdown()
-}
-
-/**
- * Invokes [block] on the [AutoShutdown] resource [T], ensuring both [AutoShutdown.shutdown]
- * and [AutoShutdown.close] are invoked when [block] terminates.
- *
- * * If `block` terminates normally, an exception thrown by [AutoShutdown.shutdown] is re-thrown
- * "as-is".
- * * If both `block` and [AutoShutdown.shutdown] terminate normally, an exception thrown by
- * [AutoShutdown.close] is re-thrown "as-is".
- * * If `block` throws an exception, exceptions from [AutoShutdown.shutdown] and/or
- * [AutoShutdown.close] are added as [suppressed][Throwable.addSuppressed] exception.
- */
-suspend inline fun <T : AutoShutdown?, R> T.useShutdown(block: (T) -> R): R {
-    // Wrapping with `use` ensures [close] is invoked even [shutdown] is cancelled.
-    return use {
-        var exception: Throwable? = null
-        try {
-            block(this)
-        } catch (e: Throwable) {
-            exception = e
-            throw e
-        } finally {
-            this.shutdownFinally(exception)
-        }
-    }
-}
-
-@PublishedApi
-internal suspend fun AutoShutdown?.shutdownFinally(cause: Throwable?) = when {
-    this == null -> {}
-    cause == null -> shutdown()
-    else ->
-        try {
-            shutdown()
-        } catch (shutdownException: Throwable) {
-            cause.addSuppressed(shutdownException)
-        }
 }
