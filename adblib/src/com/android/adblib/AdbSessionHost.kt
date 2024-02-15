@@ -51,6 +51,11 @@ open class AdbSessionHost : AutoCloseable {
     open val loggerFactory: AdbLoggerFactory = JdkLoggerFactory()
 
     /**
+     * The [AdbUsageTracker] for this host.
+     */
+    open val usageTracker: AdbUsageTracker = NoopAdbUsageTracker()
+
+    /**
      * The "main" or "root" logger from the [loggerFactory]
      */
     val logger: AdbLogger
