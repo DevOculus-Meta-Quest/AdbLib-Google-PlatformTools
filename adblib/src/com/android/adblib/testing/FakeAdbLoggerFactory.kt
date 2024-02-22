@@ -16,11 +16,11 @@
 package com.android.adblib.testing
 
 import com.android.adblib.AdbLogger
-import com.android.adblib.AdbLoggerFactory
+import com.android.adblib.AdbLoggerFactoryWithCache
 import java.util.Collections
 import java.util.concurrent.LinkedBlockingDeque
 
-class FakeAdbLoggerFactory : AdbLoggerFactory {
+class FakeAdbLoggerFactory : AdbLoggerFactoryWithCache<FakeAdbLogger>() {
     private val _logEntries = LinkedBlockingDeque<FakeAdbLoggerEntry>()
     val logEntries: Collection<FakeAdbLoggerEntry>
         get() = Collections.unmodifiableCollection(_logEntries)
@@ -29,13 +29,15 @@ class FakeAdbLoggerFactory : AdbLoggerFactory {
 
     var printToStdout: Boolean = true
 
-    override val logger: AdbLogger = FakeAdbLogger(this, "fakeadblib")
-
-    override fun createLogger(cls: Class<*>): AdbLogger {
-        return createLogger(cls.name)
+    override fun createRootLogger(): FakeAdbLogger {
+        return createCategoryLogger("fakeadblib")
     }
 
-    override fun createLogger(category: String): AdbLogger {
+    override fun createClassLogger(cls: Class<*>): FakeAdbLogger {
+        return createCategoryLogger(cls.name)
+    }
+
+    override fun createCategoryLogger(category: String): FakeAdbLogger {
         return FakeAdbLogger(this, category)
     }
 

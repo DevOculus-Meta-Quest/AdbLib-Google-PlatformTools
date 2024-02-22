@@ -1,5 +1,9 @@
 package com.android.adblib
 
+import java.util.concurrent.ConcurrentHashMap
+import java.util.function.Function
+
+
 /**
  * A general purpose "Logger" abstraction used throughout adblib.
  */
@@ -151,7 +155,10 @@ private abstract class AdbLoggerDelegate(private val delegate: AdbLogger) : AdbL
 }
 
 /**
- * Factory of [AdbLogger] instances.
+ * Factory of [AdbLogger] instances. See [AdbLoggerFactoryWithCache] for an implementation that
+ * uses a simple in-memory cache to minimize GC allocations of [AdbLogger] instances.
+ *
+ * @see AdbLoggerFactoryWithCache
  */
 interface AdbLoggerFactory {
 
@@ -169,4 +176,86 @@ interface AdbLoggerFactory {
      * Creates a [AdbLogger] with a given [category]
      */
     fun createLogger(category: String): AdbLogger
+}
+
+/**
+ * Implementation of [AdbLoggerFactory] that caches instances of [AdbLogger] created by
+ * the [createLogger] functions.
+ */
+abstract class AdbLoggerFactoryWithCache<T> : AdbLoggerFactory where T : AdbLogger {
+
+    /**
+     * We cache `class` loggers in memory because
+     *
+     * * there are only a few dozens created in practice, and
+     * * the use of the cache decreases GC allocation pressure, as adblib code tends
+     *   to use non-static fields for [AdbLogger] instances.
+     */
+    private val classLoggerCache = LoggerCache<Class<*>, T> { createClassLogger(it) }
+
+    /**
+     * We cache `category` loggers in memory, see [classLoggerCache] for justification.
+     */
+    private val categoryLoggerCache = LoggerCache<String, T> { createCategoryLogger(it) }
+
+    /**
+     * Cache for the root [logger] value
+     */
+    private var _rootLogger: T? = null
+
+    final override val logger: T
+        get() {
+            return _rootLogger ?: synchronizedRootLogger()
+        }
+
+    final override fun createLogger(cls: Class<*>): T {
+        return classLoggerCache.computeIfAbsent(cls)
+    }
+
+    final override fun createLogger(category: String): T {
+        return categoryLoggerCache.computeIfAbsent(category)
+    }
+
+    /**
+     * Creates the root [AdbLogger] instance the first time the logger is requested through [logger]
+     */
+    abstract fun createRootLogger(): T
+
+    /**
+     * Creates a [AdbLogger] instance of a given [Class] the first time the
+     * logger is requested through [createLogger].
+     */
+    abstract fun createClassLogger(cls: Class<*>): T
+
+    /**
+     * Creates an [AdbLogger] instance of a given [Category][String] the first
+     * time the logger is requested through [createLogger].
+     */
+    abstract fun createCategoryLogger(category: String): T
+
+    private fun synchronizedRootLogger(): T {
+        return synchronized(this) {
+            _rootLogger ?: createRootLogger().also {
+                _rootLogger = it
+            }
+        }
+    }
+
+    private class LoggerCache<TKey, T>(
+        /**
+         * Note: We use a [Function] lambda (as opposed to a `Kotlin` lambda) to ensure no allocation is
+         * performed when calling [ConcurrentHashMap.computeIfAbsent]
+         */
+        private val mappingFunction: Function<TKey, T>
+    ) where T : AdbLogger {
+
+        /**
+         * Note: We use a [ConcurrentHashMap] so that we get a lock-free lookup.
+         */
+        private val loggers = ConcurrentHashMap<TKey, T>()
+
+        fun computeIfAbsent(key: TKey): T {
+            return loggers.computeIfAbsent(key, mappingFunction)
+        }
+    }
 }

@@ -17,20 +17,23 @@ package com.android.adblib.utils
 
 import com.android.adblib.AdbLogger
 import com.android.adblib.AdbLoggerFactory
+import com.android.adblib.AdbLoggerFactoryWithCache
 import java.util.logging.Logger
 
 /**
  * An implementation of [AdbLoggerFactory] based on the built-in JDK [Logger] class.
  */
-class JdkLoggerFactory : AdbLoggerFactory {
+class JdkLoggerFactory : AdbLoggerFactoryWithCache<JdkLoggerFactory.JdkLogger>() {
 
-    override val logger: AdbLogger = JdkLogger("com.android.adblib")
+    override fun createRootLogger(): JdkLogger {
+        return JdkLogger("com.android.adblib")
+    }
 
-    override fun createLogger(cls: Class<*>): AdbLogger {
+    override fun createClassLogger(cls: Class<*>): JdkLogger {
         return JdkLogger(cls::class.java.name)
     }
 
-    override fun createLogger(category: String): AdbLogger {
+    override fun createCategoryLogger(category: String): JdkLogger {
         return JdkLogger(category)
     }
 
