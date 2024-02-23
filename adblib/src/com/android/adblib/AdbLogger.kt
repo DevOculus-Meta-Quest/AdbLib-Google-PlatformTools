@@ -241,7 +241,7 @@ abstract class AdbLoggerFactoryWithCache<T> : AdbLoggerFactory where T : AdbLogg
         }
     }
 
-    private class LoggerCache<TKey, T>(
+    private class LoggerCache<TKey : Any, T>(
         /**
          * Note: We use a [Function] lambda (as opposed to a `Kotlin` lambda) to ensure no allocation is
          * performed when calling [ConcurrentHashMap.computeIfAbsent]
