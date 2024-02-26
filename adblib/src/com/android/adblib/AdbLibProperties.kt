@@ -55,4 +55,16 @@ internal object AdbLibProperties {
         name = "$NAME_PREFIX.default.shell.buffer.size",
         defaultValue = 64 * 1024
     )
+
+    /**
+     * This property is used to control `AsynchronousSocketChannel` `SO_KEEPALIVE` option.
+     *
+     * Enabling `SO_KEEPALIVE` for long-running connections (e.g., those created by
+     * `DeviceServices.rawExec`) can prevent connection problems. At the same time this should not
+     * adversely impact short-lived connections.
+     */
+    val SOCKET_CHANNEL_KEEPALIVE = AdbSessionHost.BooleanProperty(
+        name = "$NAME_PREFIX.connect.channel.provider.socket.channel.keepalive",
+        defaultValue = true
+    )
 }

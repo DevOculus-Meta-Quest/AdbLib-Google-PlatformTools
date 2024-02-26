@@ -16,6 +16,7 @@
 package com.android.adblib.impl
 
 import com.android.adblib.AdbChannel
+import com.android.adblib.AdbLibProperties.SOCKET_CHANNEL_KEEPALIVE
 import com.android.adblib.AdbServerChannelProvider
 import com.android.adblib.AdbSessionHost
 import com.android.adblib.impl.channels.AdbSocketChannelImpl
@@ -64,6 +65,10 @@ internal class AdbChannelProviderConnectAddresses(
                 val socketChannel = AsynchronousSocketChannel.open(host.asynchronousChannelGroup)
                 socketChannel.closeOnException {
                     socketChannel.setOption(StandardSocketOptions.TCP_NODELAY, true)
+                    socketChannel.setOption(
+                        StandardSocketOptions.SO_KEEPALIVE,
+                        host.getPropertyValue(SOCKET_CHANNEL_KEEPALIVE)
+                    )
                     val adbChannel = AdbSocketChannelImpl(host, socketChannel)
                     try {
                         adbChannel.connect(
