@@ -16,9 +16,7 @@ sealed class AdbFailResponseException(
 
     abstract override val message: String
 
-    override fun toString(): String {
-        return message
-    }
+    override fun toString(): String = "${javaClass.simpleName}: $message"
 
     companion object {
 
