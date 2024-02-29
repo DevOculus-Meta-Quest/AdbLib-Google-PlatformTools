@@ -32,6 +32,10 @@ class TestingAdbSessionHost : AdbSessionHost() {
         TestingAdbLoggerFactory()
     }
 
+    override val usageTracker: TestingAdbUsageTracker by lazy {
+        TestingAdbUsageTracker()
+    }
+
     override fun utcNow(): Instant {
         return overrideUtcNow ?: Instant.now()
     }

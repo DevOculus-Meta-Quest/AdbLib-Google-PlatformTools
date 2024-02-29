@@ -28,7 +28,19 @@ interface AdbUsageTracker {
         val jdwpProcessPropertiesCollector: JdwpProcessPropertiesCollectorEvent?,
     )
 
-    data class JdwpProcessPropertiesCollectorEvent(val isSuccess: Boolean)
+    enum class JdwpProcessPropertiesCollectorFailureType {
+        NO_RESPONSE,
+        CLOSED_CHANNEL_EXCEPTION,
+        CONNECTION_CLOSED_ERROR,
+        OTHER_ERROR,
+    }
+
+    data class JdwpProcessPropertiesCollectorEvent(
+        val isSuccess: Boolean,
+        val failureType: JdwpProcessPropertiesCollectorFailureType? = null,
+        val previouslyFailedCount: Int,
+        val previousFailureType: JdwpProcessPropertiesCollectorFailureType? = null
+    )
 }
 
 internal class NoopAdbUsageTracker : AdbUsageTracker {
