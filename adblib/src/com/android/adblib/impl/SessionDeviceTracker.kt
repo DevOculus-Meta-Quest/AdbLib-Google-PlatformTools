@@ -22,7 +22,6 @@ import com.android.adblib.DeviceList
 import com.android.adblib.ErrorLine
 import com.android.adblib.TrackedDeviceList
 import com.android.adblib.adbLogger
-import com.android.adblib.impl.services.AdbServiceRunner
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -34,7 +33,6 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.retryWhen
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.runBlocking
 import java.io.EOFException
 import java.time.Duration
 
@@ -91,12 +89,12 @@ internal class SessionDeviceTracker(
         return if (supportsDevicesListBinaryProto()) {
             AdbHostServices.DeviceInfoFormat.BINARY_PROTO_FORMAT
         } else {
-            AdbHostServices.DeviceInfoFormat.LONG_FORMAT;
+            AdbHostServices.DeviceInfoFormat.LONG_FORMAT
         }
     }
 
     private suspend fun supportsDevicesListBinaryProto() : Boolean {
-        return session.hostServices.hostFeatures().contains(AdbFeatures.DEVICE_LIST_BINARY_PROTO);
+        return session.hostServices.hostFeatures().contains(AdbFeatures.DEVICE_LIST_BINARY_PROTO)
     }
 }
 
@@ -105,11 +103,13 @@ private fun <T> Flow<T>.retryWithDelay(
     retryValue: (Throwable) -> T?
 ): Flow<T> {
     return retryWhen { throwable, _ ->
-        // The retryWhen operator does not call us for cancellation exception
-        assert(throwable !is CancellationException)
-        retryValue(throwable)?.let { emit(it) }
-        delay(retryDelay.toMillis())
-        true
+        if (throwable is CancellationException) {
+            false
+        } else {
+            retryValue(throwable)?.let { emit(it) }
+            delay(retryDelay.toMillis())
+            true
+        }
     }
 }
 
