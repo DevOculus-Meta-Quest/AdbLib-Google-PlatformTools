@@ -15,7 +15,6 @@
  */
 package com.android.adblib
 
-import com.android.adblib.impl.SessionDeviceTracker
 import com.android.adblib.testingutils.CoroutineTestUtils.runBlockingWithTimeout
 import com.android.adblib.testingutils.FakeAdbServerProviderRule
 import com.android.fakeadbserver.DeviceState
@@ -273,6 +272,7 @@ class AdbSessionTest {
                 }
             }
         }
+        Assert.assertTrue(isTrackerDisconnectedSeen)
     }
 
     @Test

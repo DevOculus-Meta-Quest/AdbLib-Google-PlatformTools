@@ -64,14 +64,21 @@ internal class SessionDeviceTracker(
                     logger.debug { "trackDevices(): mapping deviceList $deviceList" }
                     TrackedDeviceList(connectionId, deviceList, null)
                 }
-                .retryWithDelay(retryDelay) { throwable ->
-                    connectionId++
-                    if (throwable is EOFException) {
-                        logger.info { "trackDevices() reached EOF, will retry in ${retryDelay.toMillis()} millis, connection id=$connectionId" }
+                .retryWhen { throwable, _ ->
+                    if (throwable is CancellationException) {
+                        false
                     } else {
-                        logger.info(throwable) { "trackDevices() failed, will retry in ${retryDelay.toMillis()} millis, connection id=$connectionId" }
+                        connectionId++
+                        if (throwable is EOFException) {
+                            logger.info { "trackDevices() reached EOF, will retry in ${retryDelay.toMillis()} millis, connection id=$connectionId" }
+                        } else {
+                            logger.info(throwable) { "trackDevices() failed, will retry in ${retryDelay.toMillis()} millis, connection id=$connectionId" }
+                        }
+                        // emit TrackerDisconnected state while we wait to retry the collection
+                        emit(TrackedDeviceList(connectionId, TrackerDisconnected.instance, throwable))
+                        delay(retryDelay.toMillis())
+                        true
                     }
-                    TrackedDeviceList(connectionId, TrackerDisconnected.instance, throwable)
                 }.stateIn(
                     session.scope,
                     SharingStarted.Eagerly,
@@ -95,21 +102,6 @@ internal class SessionDeviceTracker(
 
     private suspend fun supportsDevicesListBinaryProto() : Boolean {
         return session.hostServices.hostFeatures().contains(AdbFeatures.DEVICE_LIST_BINARY_PROTO)
-    }
-}
-
-private fun <T> Flow<T>.retryWithDelay(
-    retryDelay: Duration,
-    retryValue: (Throwable) -> T?
-): Flow<T> {
-    return retryWhen { throwable, _ ->
-        if (throwable is CancellationException) {
-            false
-        } else {
-            retryValue(throwable)?.let { emit(it) }
-            delay(retryDelay.toMillis())
-            true
-        }
     }
 }
 
