@@ -33,7 +33,6 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 import org.junit.Assert
-import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.ExpectedException
@@ -375,6 +374,31 @@ class CoroutineScopeCacheTest {
         cache.close()
 
         // Assert
-        assertTrue(value.closed)
+        Assert.assertTrue(value.closed)
+    }
+
+    @Test
+    fun test_usingClosedCache() = runBlockingWithTimeout {
+        // Prepare
+        val scope = CoroutineScope(SupervisorJob())
+        val cache = registerCloseable(CoroutineScopeCacheImpl(scope))
+        val key = TestKey("5")
+
+        // Act
+        cache.close()
+        val value1 = cache.getOrPut(key) { 100 }
+        val value2 = cache.getOrPut(key) { 200 }
+        val value3 = cache.getOrPutSuspending(key) { 3000 }
+        val value4 = cache.getOrPutSuspending(key) { 4000 }
+        val value5 = cache.getOrPutSuspending(key, {50000}) { 200000 }
+        val value6 = cache.getOrPutSuspending(key, {60000}) { 300000 }
+
+        // Assert
+        Assert.assertEquals(100, value1)
+        Assert.assertEquals(200, value2)
+        Assert.assertEquals(3000, value3)
+        Assert.assertEquals(4000, value4)
+        Assert.assertEquals(50000, value5)
+        Assert.assertEquals(60000, value6)
     }
 }

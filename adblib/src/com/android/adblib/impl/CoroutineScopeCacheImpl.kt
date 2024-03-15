@@ -37,6 +37,9 @@ internal class CoroutineScopeCacheImpl(
     private val job: Job
         get() = scope.coroutineContext.job
 
+    @Volatile
+    private var isClosed = false
+
     private val valueMap = ValueMap()
 
     private val suspendingMap = SuspendingMap(scope)
@@ -53,6 +56,9 @@ internal class CoroutineScopeCacheImpl(
     }
 
     override fun <T> getOrPut(key: Key<T>, defaultValue: () -> T): T {
+        if (isClosed) {
+            return InactiveCoroutineScopeCache.getOrPut(key, defaultValue)
+        }
         return valueMap.getOrPut(key, defaultValue)
     }
 
@@ -60,6 +66,9 @@ internal class CoroutineScopeCacheImpl(
         key: Key<T>,
         defaultValue: suspend CoroutineScope.() -> T
     ): T {
+        if (isClosed) {
+            return InactiveCoroutineScopeCache.getOrPutSuspending(key, defaultValue)
+        }
         return suspendingMap.getOrPut(key, defaultValue)
     }
 
@@ -68,10 +77,16 @@ internal class CoroutineScopeCacheImpl(
         fastDefaultValue: () -> T,
         defaultValue: suspend CoroutineScope.() -> T
     ): T {
+        if (isClosed) {
+            return InactiveCoroutineScopeCache.getOrPutSuspending(
+                key,
+                fastDefaultValue, defaultValue)
+        }
         return suspendingMap.getOrPut(key, fastDefaultValue, defaultValue)
     }
 
     override fun close() {
+        isClosed = true
         scope.cancel("${this::class.simpleName} has been closed")
         valueMap.close()
         suspendingMap.close()
