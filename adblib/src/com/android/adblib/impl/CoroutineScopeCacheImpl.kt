@@ -19,9 +19,11 @@ import com.android.adblib.CoroutineScopeCache
 import com.android.adblib.CoroutineScopeCache.Key
 import com.android.adblib.utils.SuppressedExceptions
 import com.android.adblib.utils.createChildScope
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
@@ -57,7 +59,7 @@ internal class CoroutineScopeCacheImpl(
 
     override fun <T> getOrPut(key: Key<T>, defaultValue: () -> T): T {
         if (isClosed) {
-            return InactiveCoroutineScopeCache.getOrPut(key, defaultValue)
+            return defaultValue()
         }
         return valueMap.getOrPut(key, defaultValue)
     }
@@ -66,9 +68,6 @@ internal class CoroutineScopeCacheImpl(
         key: Key<T>,
         defaultValue: suspend CoroutineScope.() -> T
     ): T {
-        if (isClosed) {
-            return InactiveCoroutineScopeCache.getOrPutSuspending(key, defaultValue)
-        }
         return suspendingMap.getOrPut(key, defaultValue)
     }
 
@@ -77,11 +76,6 @@ internal class CoroutineScopeCacheImpl(
         fastDefaultValue: () -> T,
         defaultValue: suspend CoroutineScope.() -> T
     ): T {
-        if (isClosed) {
-            return InactiveCoroutineScopeCache.getOrPutSuspending(
-                key,
-                fastDefaultValue, defaultValue)
-        }
         return suspendingMap.getOrPut(key, fastDefaultValue, defaultValue)
     }
 
@@ -130,7 +124,11 @@ internal class CoroutineScopeCacheImpl(
                 }
                 else -> {
                     // Compute value asynchronously
-                    launchComputeValue(key, defaultValue)
+                    try {
+                        launchComputeValue(key, defaultValue)
+                    } catch (e: CancellationException) {
+                        // Do nothing
+                    }
                     fastDefaultValue()
                 }
             }
@@ -163,6 +161,7 @@ internal class CoroutineScopeCacheImpl(
             key: Key<T>,
             defaultValue: suspend CoroutineScope.() -> T
         ) {
+            scope.ensureActive()
             // Mark the "key" as "Computing", and ensure we compute only once, as there
             // may be other threads doing the same thing concurrently
             val computing = Computing()

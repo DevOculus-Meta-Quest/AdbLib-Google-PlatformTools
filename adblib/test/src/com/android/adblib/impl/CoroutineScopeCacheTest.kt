@@ -37,6 +37,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.ExpectedException
 import java.util.concurrent.atomic.AtomicInteger
+import kotlin.coroutines.cancellation.CancellationException
 import kotlin.test.assertEquals
 
 class CoroutineScopeCacheTest {
@@ -298,7 +299,62 @@ class CoroutineScopeCacheTest {
 
         // Assert
         Assert.assertEquals("blah", value)
-        Assert.assertFalse(job?.isActive ?: true)
+        Assert.assertFalse(job!!.isActive)
+        Assert.assertFalse(cache.scope.isActive)
+    }
+
+    @Test
+    fun test_computation_getsCancelledOnCacheClose() = runBlockingWithTimeout {
+        // Prepare
+        val scope = CoroutineScope(SupervisorJob())
+        val cache = registerCloseable(CoroutineScopeCacheImpl(scope))
+        val key = TestKey("5")
+        exceptionRule.expect(CancellationException::class.java)
+        exceptionRule.expectMessage("CoroutineScopeCacheImpl has been closed")
+
+        // Act
+        launch {
+            delay(100)
+            cache.close()
+        }
+
+        cache.getOrPutSuspending(key) {
+            delay(Long.MAX_VALUE)
+            "bar"
+        }
+
+        // Assert
+        Assert.fail("Test should have thrown exception")
+    }
+
+    @Test
+    fun test_computationWithFastDefault_getsCancelledOnCacheClose() = runBlockingWithTimeout {
+        // Prepare
+        val scope = CoroutineScope(SupervisorJob())
+        val cache = registerCloseable(CoroutineScopeCacheImpl(scope))
+        val key = TestKey("5")
+
+        // Act
+        launch {
+            delay(100)
+            cache.close()
+        }
+
+        var computationIsCancelled = false
+        val value = cache.getOrPutSuspending(key, { "foo" }) {
+            try {
+                delay(Long.MAX_VALUE)
+            } catch (e: CancellationException) {
+                computationIsCancelled = true
+            }
+            "bar"
+        }
+        // Wait for the `cache.close` call to complete
+        delay(200)
+
+        // Assert
+        Assert.assertEquals("foo", value)
+        Assert.assertTrue(computationIsCancelled)
         Assert.assertFalse(cache.scope.isActive)
     }
 
@@ -378,7 +434,7 @@ class CoroutineScopeCacheTest {
     }
 
     @Test
-    fun test_usingClosedCache() = runBlockingWithTimeout {
+    fun test_usingClosedCache_getOrPut() = runBlockingWithTimeout {
         // Prepare
         val scope = CoroutineScope(SupervisorJob())
         val cache = registerCloseable(CoroutineScopeCacheImpl(scope))
@@ -388,17 +444,44 @@ class CoroutineScopeCacheTest {
         cache.close()
         val value1 = cache.getOrPut(key) { 100 }
         val value2 = cache.getOrPut(key) { 200 }
-        val value3 = cache.getOrPutSuspending(key) { 3000 }
-        val value4 = cache.getOrPutSuspending(key) { 4000 }
-        val value5 = cache.getOrPutSuspending(key, {50000}) { 200000 }
-        val value6 = cache.getOrPutSuspending(key, {60000}) { 300000 }
 
         // Assert
         Assert.assertEquals(100, value1)
         Assert.assertEquals(200, value2)
-        Assert.assertEquals(3000, value3)
-        Assert.assertEquals(4000, value4)
-        Assert.assertEquals(50000, value5)
-        Assert.assertEquals(60000, value6)
+    }
+
+    @Test
+    fun test_usingClosedCache_getOrPutSuspending_throwsCancellationException() =
+        runBlockingWithTimeout {
+            // Prepare
+            val scope = CoroutineScope(SupervisorJob())
+            val cache = registerCloseable(CoroutineScopeCacheImpl(scope))
+            val key = TestKey("5")
+            exceptionRule.expect(CancellationException::class.java)
+            exceptionRule.expectMessage("CoroutineScopeCacheImpl has been closed")
+
+            // Act
+            cache.close()
+            cache.getOrPutSuspending(key) { 3000 }
+
+            // Assert
+            Assert.fail("Test should have thrown exception")
+        }
+
+    @Test
+    fun test_usingClosedCache_getOrPutSuspendingWithFastDefault() = runBlockingWithTimeout {
+        // Prepare
+        val scope = CoroutineScope(SupervisorJob())
+        val cache = registerCloseable(CoroutineScopeCacheImpl(scope))
+        val key = TestKey("5")
+
+        // Act
+        cache.close()
+        val value1 = cache.getOrPutSuspending(key, {50000}) { 200000 }
+        val value2 = cache.getOrPutSuspending(key, {60000}) { 300000 }
+
+        // Assert
+        Assert.assertEquals(50000, value1)
+        Assert.assertEquals(60000, value2)
     }
 }
