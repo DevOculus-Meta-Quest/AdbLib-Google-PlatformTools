@@ -65,8 +65,8 @@ interface CoroutineScopeCache : AutoCloseable {
      * for a given [key], the first caller gets to compute the value stored in the
      * map, and follow-up callers are suspended until the value is computed.
      *
-     * Also unlike [getOrPut], if [defaultValue] throws an exception for a given [key],
-     * the same exception will be re-thrown for all subsequent callers.
+     * If [defaultValue] throws an exception for a given [key], a new computation will be
+     * triggered for subsequent callers of this method.
      *
      * **Note**: [getOrPut] and [getOrPutSuspending] use separate in-memory caches
      * internally to prevent conflicting behavior between suspending and
@@ -81,16 +81,15 @@ interface CoroutineScopeCache : AutoCloseable {
      * Suspending version of [getOrPut]: returns the value for the given [key].
      * If the key is not found in the map, asynchronously starts evaluating the
      * [defaultValue] coroutine, then immediately returns [fastDefaultValue].
-     * Once the [defaultValue] coroutine completes, the resulting value is stored in
-     * the map.
+     * Once the [defaultValue] coroutine completes, if successful, the resulting value
+     * is stored in the map.
      *
      * Unlike [getOrPut], this method guarantees that [defaultValue] is invoked
      * at most once if the key is not already present in the map. This implies that,
      * for a given [key], the first caller gets to compute the value stored in the
      * map, and follow-up callers get [fastDefaultValue] until the value is computed.
      *
-     * Also unlike [getOrPut], if [defaultValue] throws an exception for a given [key],
-     * the same exception will be re-thrown for all subsequent callers.
+     * If a computation fails it will be retried the next time this method is called.
      *
      * **Note**: [getOrPut] and [getOrPutSuspending] use separate in-memory caches
      * internally to prevent conflicting behavior between suspending and

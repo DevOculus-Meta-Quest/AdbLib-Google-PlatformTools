@@ -155,6 +155,86 @@ class CoroutineScopeCacheTest {
     }
 
     @Test
+    fun test_GetOrPutSuspending_CallsDefaultValueOnlyOnce() = runBlockingWithTimeout {
+        // Prepare
+        val scope = CoroutineScope(SupervisorJob())
+        val cache = registerCloseable(CoroutineScopeCacheImpl(scope))
+        val key = TestKey("5")
+        val syncChannel = Channel<Unit>()
+        var callCount = 0
+        suspend fun getOrPutSuspending(): Any {
+            return cache.getOrPutSuspending(key) {
+                callCount++
+                syncChannel.receive()
+                "bar"
+            }
+        }
+
+        // Act
+        launch {
+            delay(50)
+            syncChannel.send(Unit) // Wakeup pending coroutine
+        }
+        val value = getOrPutSuspending()
+        val value2 = getOrPutSuspending()
+
+        delay(100) // Wait until map is updated
+        val value3 = getOrPutSuspending()
+
+        // Assert
+        Assert.assertEquals("bar", value)
+        Assert.assertEquals("bar", value2)
+        Assert.assertEquals("bar", value3)
+        Assert.assertEquals(1, callCount)
+    }
+
+    @Test
+    fun test_GetOrPutSuspending_retryAfterFailureCallsDefaultValueOnlyOnce() = runBlockingWithTimeout {
+        // Prepare
+        val scope = CoroutineScope(SupervisorJob())
+        val cache = registerCloseable(CoroutineScopeCacheImpl(scope))
+        val key = TestKey("5")
+        val syncChannel = Channel<Unit>()
+        var callCount = 0
+        suspend fun getOrPutSuspending(causeFailure: Boolean): Any {
+            return cache.getOrPutSuspending(key) {
+                if (causeFailure) {
+                    throw Exception("My Exception")
+                }
+                callCount++
+                syncChannel.receive()
+                "bar"
+            }
+        }
+
+        // Act
+        // First put a cache value into a failed state
+        try {
+            getOrPutSuspending(true)
+            Assert.fail("Should have thrown")
+        } catch (t: Throwable) {
+            // Expected exception
+            Assert.assertEquals("My Exception", t.message)
+        }
+        launch {
+            delay(50)
+            syncChannel.send(Unit) // Wakeup pending coroutine
+        }
+        // Retry now and have a `defaultValue` not throw an exception any longer
+        val value = getOrPutSuspending(false)
+        val value2 = getOrPutSuspending(false)
+
+        delay(100) // Wait until map is updated
+        val value3 = getOrPutSuspending(false)
+
+        // Assert
+        Assert.assertEquals("bar", value)
+        Assert.assertEquals("bar", value2)
+        Assert.assertEquals("bar", value3)
+        Assert.assertEquals(1, callCount)
+    }
+
+    @Test
     fun test_GetOrPutSuspending_WaitsForPendingComputation() = runBlockingWithTimeout {
         // Prepare
         val scope = CoroutineScope(SupervisorJob())
@@ -184,29 +264,6 @@ class CoroutineScopeCacheTest {
     }
 
     @Test
-    fun test_GetOrPutSuspending_RetainsCoroutineException() = runBlockingWithTimeout {
-        // Prepare
-        val scope = CoroutineScope(SupervisorJob())
-        val cache = registerCloseable(CoroutineScopeCacheImpl(scope))
-        val key = TestKey("5")
-        fun getOrPutSuspending(message: String): Any {
-            return cache.getOrPutSuspending(key, { "blah" }) {
-                throw Exception(message)
-            }
-        }
-
-        // Act
-        getOrPutSuspending("My Exception")
-        delay(50) // Wait until map is updated
-        exceptionRule.expect(Exception::class.java)
-        exceptionRule.expectMessage("My Exception")
-        getOrPutSuspending("Another Exception")
-
-        // Assert
-        Assert.fail("Test should have thrown exception")
-    }
-
-    @Test
     fun test_GetOrPutSuspending_ReturnsFastValueThenReturnsCoroutineValue() = runBlockingWithTimeout {
         // Prepare
         val scope = CoroutineScope(SupervisorJob())
@@ -232,7 +289,7 @@ class CoroutineScopeCacheTest {
     }
 
     @Test
-    fun test_GetOrPutSuspending_CallsDefaultValueOnlyOnce() = runBlockingWithTimeout {
+    fun test_GetOrPutSuspendingWithFastDefault_CallsDefaultValueOnlyOnce() = runBlockingWithTimeout {
         // Prepare
         val scope = CoroutineScope(SupervisorJob())
         val cache = registerCloseable(CoroutineScopeCacheImpl(scope))
@@ -275,6 +332,70 @@ class CoroutineScopeCacheTest {
         // Assert
         Assert.assertEquals("value2", value1)
         Assert.assertEquals("blah", value2)
+    }
+
+    @Test
+    fun test_GetOrPutSuspending_RetriesOnCoroutineException() = runBlockingWithTimeout {
+        // Prepare
+        val scope = CoroutineScope(SupervisorJob())
+        val cache = registerCloseable(CoroutineScopeCacheImpl(scope))
+        val key = TestKey("5")
+
+        // Act
+        var exceptionThrown: Throwable? = null
+        try {
+            cache.getOrPutSuspending(key) {
+                throw Exception("My Exception")
+            }
+        } catch (e: Exception) {
+            exceptionThrown = e
+        }
+
+        delay(50) // Wait until map is updated and retry
+        val value2 = cache.getOrPutSuspending(key) {
+            "foo"
+        }
+
+        // Retry again. This time a cached value should be returned.
+        delay(50)
+        val value3 = cache.getOrPutSuspending(key) {
+            "other"
+        }
+
+        // Assert
+        Assert.assertNotNull(exceptionThrown)
+        Assert.assertEquals("My Exception", exceptionThrown?.message)
+        Assert.assertEquals("foo", value2)
+        Assert.assertEquals("foo", value3)
+    }
+
+    @Test
+    fun test_GetOrPutSuspendingWithFastDefault_RetriesOnCoroutineException() = runBlockingWithTimeout {
+        // Prepare
+        val scope = CoroutineScope(SupervisorJob())
+        val cache = registerCloseable(CoroutineScopeCacheImpl(scope))
+        val key = TestKey("5")
+
+        // Act
+        val value1 = cache.getOrPutSuspending(key, { "blah" }) {
+            throw Exception("My Exception")
+        }
+
+        delay(50) // Wait until map is updated and retry
+        val value2 = cache.getOrPutSuspending(key, { "blah" }) {
+            "foo"
+        }
+
+        // Retry again. This time there should be a computed value in the cache.
+        delay(50)
+        val value3 = cache.getOrPutSuspending(key, { "blah" }) {
+            "other"
+        }
+
+        // Assert
+        Assert.assertEquals("blah", value1)
+        Assert.assertEquals("blah", value2)
+        Assert.assertEquals("foo", value3)
     }
 
     @Test

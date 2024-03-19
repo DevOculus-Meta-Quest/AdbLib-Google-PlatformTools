@@ -114,33 +114,48 @@ internal class CoroutineScopeCacheImpl(
         ): T {
             return when (val currentEntry = map[key]) {
                 is Result<*> -> {
-                    // Happy path: The value is there and computed
-                    @Suppress("UNCHECKED_CAST")
-                    currentEntry.getOrThrow() as T
+                    if (currentEntry.isFailure) {
+                        // Retry if previous computation failed
+                        launchComputeValue(currentEntry, key, defaultValue)
+                        fastDefaultValue()
+                    } else {
+                        @Suppress("UNCHECKED_CAST")
+                        return currentEntry.getOrThrow() as T
+                    }
                 }
                 is Computing -> {
                     // Value is currently being computed, fast exit
                     fastDefaultValue()
                 }
-                else -> {
+                null -> {
                     // Compute value asynchronously
                     try {
-                        launchComputeValue(key, defaultValue)
+                        launchComputeValue(null, key, defaultValue)
                     } catch (e: CancellationException) {
-                        // Do nothing
+                        // `scope` has been cancelled. Don't throw a `CancellationException`,
+                        // but instead  return a fast default to as this method always returns
+                        // a fast default when there is an error.
                     }
                     fastDefaultValue()
+                }
+                else -> {
+                    throw IllegalStateException("Internal error: SuspendingMap contains an invalid object type")
                 }
             }
         }
 
         suspend fun <T> getOrPut(key: Key<T>, defaultValue: suspend CoroutineScope.() -> T): T {
+            var recomputeOnFailure = true
             while (true) {
                 when (val currentEntry = map[key]) {
                     is Result<*> -> {
-                        // Happy path: The value is there and computed
-                        @Suppress("UNCHECKED_CAST")
-                        return currentEntry.getOrThrow() as T
+                        if (currentEntry.isFailure && recomputeOnFailure) {
+                            // Retry if previous computation failed
+                            launchComputeValue(currentEntry, key, defaultValue)
+                        } else {
+                            @Suppress("UNCHECKED_CAST")
+                            return currentEntry.getOrThrow() as T
+                        }
                     }
                     is Computing -> {
                         // Value is currently being computed, wait for computing coroutine to
@@ -148,24 +163,45 @@ internal class CoroutineScopeCacheImpl(
                         currentEntry.job?.join()
                         yield()
                     }
-                    else -> {
+                    null -> {
                         // Compute value asynchronously and try again
-                        launchComputeValue(key, defaultValue)
+                        launchComputeValue(null, key, defaultValue)
                         yield()
                     }
+                    else -> {
+                        throw IllegalStateException("Internal error: SuspendingMap contains an invalid object type")
+                    }
                 }
+                recomputeOnFailure = false
             }
         }
 
+        /**
+         * Launches a new computation. This should be called only if the result was not previously
+         * computed or if the previous computation failed.
+         */
         private fun <T> launchComputeValue(
-            key: Key<T>,
-            defaultValue: suspend CoroutineScope.() -> T
+            currentResult: Result<*>?, key: Key<T>, defaultValue: suspend CoroutineScope.() -> T
         ) {
             scope.ensureActive()
             // Mark the "key" as "Computing", and ensure we compute only once, as there
             // may be other threads doing the same thing concurrently
             val computing = Computing()
-            if (map.putIfAbsent(key, computing) == null) {
+            val valueWasStored = when {
+                currentResult == null -> {
+                    map.putIfAbsent(key, computing) == null
+                }
+
+                currentResult.isFailure -> {
+                    map.replace(key, currentResult, computing)
+                }
+
+                else -> {
+                    throw IllegalArgumentException("Internal error: invalid entry type $currentResult")
+                }
+            }
+
+            if (valueWasStored) {
                 computing.job = scope.launch {
                     val result = runCatching { defaultValue() }
 
