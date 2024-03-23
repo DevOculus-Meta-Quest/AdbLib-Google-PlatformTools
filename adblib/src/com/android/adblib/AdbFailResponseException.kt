@@ -86,8 +86,4 @@ class AdbDeviceFailResponseException(
             it.initCause(this)
         }
     }
-
-    override fun toString(): String {
-        return message
-    }
 }
