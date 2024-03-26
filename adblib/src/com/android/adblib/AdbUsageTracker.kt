@@ -32,6 +32,7 @@ interface AdbUsageTracker {
         NO_RESPONSE,
         CLOSED_CHANNEL_EXCEPTION,
         CONNECTION_CLOSED_ERROR,
+        IO_EXCEPTION,
         OTHER_ERROR,
     }
 
