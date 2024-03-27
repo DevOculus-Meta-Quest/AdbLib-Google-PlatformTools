@@ -446,3 +446,21 @@ class ShellManager(val device: ConnectedDevice) {
         )
     }
 }
+
+/**
+ * Returns the list of features supported by both the [device] and the ADB server.
+ *
+ * See [AdbFeatures] for a (subset of the) list of possible features.
+ */
+suspend fun ConnectedDevice.availableFeatures(): Set<String> {
+    return session.hostServices.availableFeatures(selector)
+}
+
+/**
+ * Whether an [AdbFeatures] is supported by both the [device] and the ADB server.
+ *
+ * See [AdbFeatures] for a (subset of the) list of possible features.
+ */
+suspend fun ConnectedDevice.hasAvailableFeature(feature: String): Boolean {
+    return session.hostServices.hasAvailableFeature(selector, feature)
+}

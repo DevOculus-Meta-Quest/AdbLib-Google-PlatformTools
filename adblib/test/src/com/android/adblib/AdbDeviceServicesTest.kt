@@ -2486,7 +2486,7 @@ class AdbDeviceServicesTest {
     @Test
     fun testTrackAppFlowWorks(): Unit = runBlockingWithTimeout {
         // Prepare
-        val fakeDevice = addFakeDevice(fakeAdb)
+        val fakeDevice = addFakeDevice(fakeAdb, sdk = 31)
         val deviceSelector = DeviceSelector.fromSerialNumber(fakeDevice.deviceId)
         addProfileableProcess(fakeDevice, 50) // Add a single client to start with
 
@@ -2508,6 +2508,22 @@ class AdbDeviceServicesTest {
     }
 
     @Test
+    fun testTrackAppFlowThrowsOnOlderDevices(): Unit = runBlockingWithTimeout {
+        // Prepare
+        val fakeDevice = addFakeDevice(fakeAdb, sdk = 30)
+        val deviceSelector = DeviceSelector.fromSerialNumber(fakeDevice.deviceId)
+
+        // Act
+        exceptionRule.expect(AdbFailResponseException::class.java)
+        deviceServices.trackApp(deviceSelector)
+            .collect {
+            }
+
+        // Assert
+        Assert.fail("Should not reach")
+    }
+
+    @Test
     fun testTrackAppFlowThrowsIfInvalidDeviceSelector(): Unit = runBlockingWithTimeout {
         // Prepare
 
@@ -2524,7 +2540,7 @@ class AdbDeviceServicesTest {
     @Test
     fun testTrackAppFlowIsTransparentToExceptions(): Unit = runBlockingWithTimeout {
         // Prepare
-        val fakeDevice = addFakeDevice(fakeAdb)
+        val fakeDevice = addFakeDevice(fakeAdb, sdk = 31)
         val deviceSelector = DeviceSelector.fromSerialNumber(fakeDevice.deviceId)
         addProfileableProcess(fakeDevice, 50) // Add a single client to start with
 
@@ -2542,7 +2558,7 @@ class AdbDeviceServicesTest {
     @Test
     fun testTrackAppFlowIsTransparentToCancellation(): Unit = runBlockingWithTimeout {
         // Prepare
-        val fakeDevice = addFakeDevice(fakeAdb)
+        val fakeDevice = addFakeDevice(fakeAdb, sdk = 31)
         val deviceSelector = DeviceSelector.fromSerialNumber(fakeDevice.deviceId)
         addProfileableProcess(fakeDevice, 50) // Add a single client to start with
 

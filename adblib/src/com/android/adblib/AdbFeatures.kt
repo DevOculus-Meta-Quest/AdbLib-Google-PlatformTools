@@ -46,4 +46,12 @@ object AdbFeatures {
      * and host:track-devices-proto-binary.
      */
     const val DEVICE_LIST_BINARY_PROTO = "devicetracker_proto_format"
+
+    /**
+     * If the result of [AdbHostServices.features] contains this value, the
+     * [AdbDeviceServices.trackApp] invocation is supported by the specified device.
+     *
+     * Note: "track-app" was added in API 31 (Android "S")
+     */
+    const val TRACK_APP = "track_app"
 }

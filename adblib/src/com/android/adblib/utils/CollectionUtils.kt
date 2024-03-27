@@ -50,3 +50,20 @@ fun <T> Iterable<T>.toImmutableList(): List<T> {
 }
 
 private class ImmutableList<T>(val list: List<T>) : List<T> by list
+
+/**
+ * Returns a [Set] that can't be modified from both Kotlin and Java consumers,
+ * even through casting to mutable interfaces or calling mutating methods.
+ *
+ * Note: It is harmless to call this multiple times, i.e.
+ * `toImmutableSet(toImmutableSet(list)) == toImmutableSet(list)`
+ */
+fun <T> Iterable<T>.toImmutableSet(): Set<T> {
+    return when (this) {
+        is ImmutableSet -> this
+        is Set -> ImmutableSet(this)
+        else -> ImmutableSet(this.toSet())
+    }
+}
+
+private class ImmutableSet<T>(val set: Set<T>) : Set<T> by set

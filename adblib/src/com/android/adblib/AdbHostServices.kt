@@ -1,6 +1,6 @@
 package com.android.adblib
 
-import com.android.adblib.utils.toImmutableList
+import com.android.adblib.utils.toImmutableSet
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
 
@@ -276,13 +276,22 @@ class WaitForTransport(private val queryValue: String) {
  *
  * See [AdbFeatures] for a (subset of the) list of possible features.
  */
-suspend fun AdbHostServices.availableFeatures(device: DeviceSelector): List<String> {
+suspend fun AdbHostServices.availableFeatures(device: DeviceSelector): Set<String> {
     return this.session.deviceCache(device).getOrPutSuspending(availableFeaturesKey) {
         // We must return only the set of features common to both the host and the device.
         val deviceFeaturesSet = features(device).toSet()
         val hostFeaturesSet = hostFeatures().toSet()
-        hostFeaturesSet.intersect(deviceFeaturesSet).toImmutableList()
+        hostFeaturesSet.intersect(deviceFeaturesSet).toImmutableSet()
     }
+}
+
+/**
+ * Whether an [AdbFeatures] is supported by both the [device] and the ADB server.
+ *
+ * See [AdbFeatures] for a (subset of the) list of possible features.
+ */
+suspend fun AdbHostServices.hasAvailableFeature(device: DeviceSelector, feature: String): Boolean {
+    return availableFeatures(device).contains(feature)
 }
 
 /**
@@ -291,4 +300,4 @@ suspend fun AdbHostServices.availableFeatures(device: DeviceSelector): List<Stri
 suspend fun AdbHostServices.isKnownDevice(serialNumber: String) =
     devices().any { it.serialNumber == serialNumber }
 
-private val availableFeaturesKey = CoroutineScopeCache.Key<List<String>>("availableFeaturesKey")
+private val availableFeaturesKey = CoroutineScopeCache.Key<Set<String>>("availableFeaturesKey")
