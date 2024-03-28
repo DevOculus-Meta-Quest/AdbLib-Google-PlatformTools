@@ -44,6 +44,7 @@ class DevicePropertiesImpl(
     private val logger = adbLogger(deviceServices.session)
 
     private val allReadonlyKey = CoroutineScopeCache.Key<Map<String, String>>("allReadonly")
+    private val shellOutputsCrLfKey = CoroutineScopeCache.Key<Boolean>("shellOutputsCrLf")
 
     private val session: AdbSession
         get() = deviceServices.session
@@ -70,10 +71,14 @@ class DevicePropertiesImpl(
                 }.toList()
             DevicePropertiesParser().parse(lines.asSequence())
         } else {
-            // Use "shell", after detecting older implementations that use `\r\n` for new lines
-            val text = deviceServices.shell(device, "echo foo", TextShellCollector(), stripCrLf = false).first()
-            val stripCrLf = text.endsWith("\r\n")
-            val lines = deviceServices.shell(device, "getprop", LineShellCollector(), stripCrLf = stripCrLf).toList()
+            // Use "shell"
+            val lines =
+                deviceServices.shell(
+                    device,
+                    "getprop",
+                    LineShellCollector(),
+                    stripCrLf = shellOutputsCrLf()
+                ).toList()
             return DevicePropertiesParser().parse(lines.asSequence())
         }
     }
@@ -102,6 +107,16 @@ class DevicePropertiesImpl(
                 "Property '$RO_BUILD_VERSION_SDK' (\"$api\") is not a number, returning $default instead"
             }
             return default
+        }
+    }
+
+    /** Detects if we are dealing with older shell implementations that use `\r\n` for new lines. */
+    private suspend fun shellOutputsCrLf(): Boolean {
+        return cache.getOrPutSuspending(shellOutputsCrLfKey) {
+            val text =
+                deviceServices.shell(device, "echo foo", TextShellCollector(), stripCrLf = false)
+                    .first()
+            text.endsWith("\r\n")
         }
     }
 }
