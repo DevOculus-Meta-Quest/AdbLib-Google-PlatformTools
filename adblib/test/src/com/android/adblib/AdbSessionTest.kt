@@ -714,6 +714,52 @@ class AdbSessionTest {
         Assert.assertFalse(childSession.scope.isActive)
     }
 
+    @Test
+    fun testDeviceCachingWorksWhenAvailable(): Unit = runBlockingWithTimeout {
+        // Prepare
+        val key = CoroutineScopeCache.Key<Int>("myValue")
+        val deviceId = "device123"
+        fakeAdb.connectDevice(
+            deviceId,
+            "test1",
+            "test2",
+            "model",
+            "sdk",
+            DeviceState.HostConnectionType.USB
+        )
+        val deviceSelector = DeviceSelector.fromSerialNumber(deviceId)
+        // Wait for `connectedDevicesTracker` to start tracking the device
+        yieldUntil { session.connectedDevicesTracker.connectedDevices.value.size == 1 }
+
+        // Act
+        val firstValue = 6767
+        val secondValue = 34349
+        val result1 = session.deviceCacheProvider.withDeviceCacheIfAvailable(deviceSelector, key) { firstValue }
+        val result2 = session.deviceCacheProvider.withDeviceCacheIfAvailable(deviceSelector, key) { secondValue }
+
+        // Assert
+        Assert.assertEquals(firstValue, result1)
+        Assert.assertEquals(firstValue, result2)
+    }
+
+    @Test
+    fun testDeviceCacheIsNotUsed_whenDeviceIsNotTrackedByConnectedDevicesTracker(): Unit =
+        runBlockingWithTimeout {
+            // Prepare
+            val key = CoroutineScopeCache.Key<Int>("myValue")
+            val deviceSelector = DeviceSelector.fromSerialNumber("device123")
+
+            // Act
+            val firstValue = 6767
+            val secondValue = 34349
+            val result1 = session.deviceCacheProvider.withDeviceCacheIfAvailable(deviceSelector, key) { firstValue }
+            val result2 = session.deviceCacheProvider.withDeviceCacheIfAvailable(deviceSelector, key) { secondValue }
+
+            // Assert
+            Assert.assertEquals(firstValue, result1)
+            Assert.assertEquals(secondValue, result2)
+        }
+
     class MyTestException(message: String) : IOException(message)
 
     private suspend fun yieldUntil(

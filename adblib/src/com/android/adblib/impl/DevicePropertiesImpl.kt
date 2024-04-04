@@ -29,6 +29,7 @@ import com.android.adblib.ShellCommandOutputElement
 import com.android.adblib.TextShellCollector
 import com.android.adblib.adbLogger
 import com.android.adblib.availableFeatures
+import com.android.adblib.deviceCacheProvider
 import com.android.adblib.utils.rethrowCancellation
 import com.android.adblib.utils.toImmutableMap
 import kotlinx.coroutines.flow.first
@@ -37,14 +38,10 @@ import kotlinx.coroutines.flow.toList
 
 class DevicePropertiesImpl(
     val deviceServices: AdbDeviceServices,
-    val cache: CoroutineScopeCache,
     val device: DeviceSelector
 ) : DeviceProperties {
 
     private val logger = adbLogger(deviceServices.session)
-
-    private val allReadonlyKey = CoroutineScopeCache.Key<Map<String, String>>("allReadonly")
-    private val shellOutputsCrLfKey = CoroutineScopeCache.Key<Boolean>("shellOutputsCrLf")
 
     private val session: AdbSession
         get() = deviceServices.session
@@ -84,7 +81,7 @@ class DevicePropertiesImpl(
     }
 
     override suspend fun allReadonly(): Map<String, String> {
-        return cache.getOrPutSuspending(allReadonlyKey) {
+        return session.deviceCacheProvider.withDeviceCacheIfAvailable(device, allReadonlyKey) {
             all()
                 .filter { prop -> prop.name.startsWith("ro.") }
                 .associate { it.name to it.value }
@@ -112,7 +109,7 @@ class DevicePropertiesImpl(
 
     /** Detects if we are dealing with older shell implementations that use `\r\n` for new lines. */
     private suspend fun shellOutputsCrLf(): Boolean {
-        return cache.getOrPutSuspending(shellOutputsCrLfKey) {
+        return session.deviceCacheProvider.withDeviceCacheIfAvailable(device, shellOutputsCrLfKey) {
             val text =
                 deviceServices.shell(device, "echo foo", TextShellCollector(), stripCrLf = false)
                     .first()
@@ -120,3 +117,6 @@ class DevicePropertiesImpl(
         }
     }
 }
+
+private val allReadonlyKey = CoroutineScopeCache.Key<Map<String, String>>("allReadonly")
+private val shellOutputsCrLfKey = CoroutineScopeCache.Key<Boolean>("shellOutputsCrLf")

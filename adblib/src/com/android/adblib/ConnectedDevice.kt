@@ -100,7 +100,7 @@ val ConnectedDevice.deviceInfo: DeviceInfo
 /**
  * Shortcut to the [DeviceProperties] of this device.
  */
-suspend fun ConnectedDevice.deviceProperties(): DeviceProperties =
+fun ConnectedDevice.deviceProperties(): DeviceProperties =
     session.deviceServices.deviceProperties(DeviceSelector.fromSerialNumber(serialNumber))
 
 /**

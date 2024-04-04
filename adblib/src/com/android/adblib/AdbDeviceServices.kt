@@ -771,14 +771,9 @@ suspend fun AdbDeviceServices.syncStat(
  * Returns a [DeviceProperties] instance for the given device. [DeviceProperties]
  * gives access to device properties returned by the `getprop` shell command.
  */
-suspend fun AdbDeviceServices.deviceProperties(device: DeviceSelector): DeviceProperties {
-    val cache = session.deviceCache(device)
-    return cache.getOrPut(DevicePropertiesKey) {
-        DevicePropertiesImpl(this, cache, device)
-    }
+fun AdbDeviceServices.deviceProperties(device: DeviceSelector): DeviceProperties {
+    return DevicePropertiesImpl(this, device)
 }
-
-private val DevicePropertiesKey = CoroutineScopeCache.Key<DeviceProperties>("DeviceProperties")
 
 interface DeviceProperties {
 

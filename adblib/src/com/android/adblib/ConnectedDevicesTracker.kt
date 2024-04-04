@@ -15,7 +15,6 @@
  */
 package com.android.adblib
 
-import com.android.adblib.impl.InactiveCoroutineScopeCache
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
@@ -73,39 +72,5 @@ suspend fun ConnectedDevicesTracker.waitForDevice(serialNumber: String): Connect
         connectedDevices.transform { devices ->
             emit(devices.firstOrNull { device -> device.serialNumber == serialNumber })
         }.filterNotNull().first()
-    }
-}
-
-/**
- * Returns the [CoroutineScopeCache] associated to the connected device with the
- * given [serialNumber]. If the device is not connected when this method is called,
- * a "no-op" cache is returned.
- *
- * Note: when the device is disconnected, the cache becomes inactive, i.e. it is emptied,
- * closed and never re-activated, even if a device with the same serial number is
- * reconnected.
- */
-fun ConnectedDevicesTracker.deviceCache(serialNumber: String): CoroutineScopeCache {
-    return try {
-        this.device(serialNumber).cache
-    } catch(e: NoSuchElementException) {
-        return InactiveCoroutineScopeCache
-    }
-}
-
-/**
- * Returns the [CoroutineScopeCache] associated to the connected device with the
- * given [selector]. If the device is not connected when this method is called,
- * a "no-op" cache is returned.
- *
- * Note: when the device is disconnected, the cache becomes inactive, i.e. it is emptied,
- * closed and never re-activated, even if a device with the same serial number is
- * reconnected.
- */
-suspend fun ConnectedDevicesTracker.deviceCache(selector: DeviceSelector): CoroutineScopeCache {
-    return try {
-        this.device(selector).cache
-    } catch(e: NoSuchElementException) {
-        return InactiveCoroutineScopeCache
     }
 }

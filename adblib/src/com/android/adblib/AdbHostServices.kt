@@ -277,7 +277,7 @@ class WaitForTransport(private val queryValue: String) {
  * See [AdbFeatures] for a (subset of the) list of possible features.
  */
 suspend fun AdbHostServices.availableFeatures(device: DeviceSelector): Set<String> {
-    return this.session.deviceCache(device).getOrPutSuspending(availableFeaturesKey) {
+    return session.deviceCacheProvider.withDeviceCacheIfAvailable(device, availableFeaturesKey) {
         // We must return only the set of features common to both the host and the device.
         val deviceFeaturesSet = features(device).toSet()
         val hostFeaturesSet = hostFeatures().toSet()

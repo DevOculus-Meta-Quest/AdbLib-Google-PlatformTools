@@ -19,6 +19,7 @@ import com.android.adblib.AdbLibProperties.TRACK_DEVICES_RETRY_DELAY
 import com.android.adblib.AdbSession.Companion.create
 import com.android.adblib.CoroutineScopeCache.Key
 import com.android.adblib.impl.AdbSessionImpl
+import com.android.adblib.impl.ConnectedDevicesDeviceCacheProvider
 import com.android.adblib.impl.ConnectedDevicesTrackerImpl
 import com.android.adblib.impl.DeviceInfoTracker
 import com.android.adblib.impl.SessionDeviceTracker
@@ -376,17 +377,18 @@ val AdbSession.connectedDevicesTracker: ConnectedDevicesTracker
 private object ConnectedDevicesManagerKey : Key<ConnectedDevicesTracker>(ConnectedDevicesTracker::class.java.simpleName)
 
 /**
- * Returns a [CoroutineScopeCache] that keeps entries alive until the device corresponding
- * to [serialNumber] is disconnected.
+ * Provides a way to store data in a device cache by device selector.
+ *
+ * @throws ClosedSessionException if this [AdbSession] has been [closed][AdbSession.close].
  */
-fun AdbSession.deviceCache(serialNumber: String): CoroutineScopeCache {
-    return connectedDevicesTracker.deviceCache(serialNumber)
-}
+val AdbSession.deviceCacheProvider: DeviceCacheProvider
+    get() {
+        return this.cache.getOrPut(DeviceCacheProviderKey) {
+            ConnectedDevicesDeviceCacheProvider(this)
+        }
+    }
 
 /**
- * Returns a [CoroutineScopeCache] that keeps entries alive until the device corresponding
- * to [selector] is disconnected.
+ * The [Key] used to identify the [DeviceCacheProvider] in [AdbSession.cache].
  */
-suspend fun AdbSession.deviceCache(selector: DeviceSelector): CoroutineScopeCache {
-    return connectedDevicesTracker.deviceCache(selector)
-}
+private object DeviceCacheProviderKey : Key<DeviceCacheProvider>(DeviceCacheProvider::class.java.simpleName)

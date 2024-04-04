@@ -253,7 +253,7 @@ class ConnectedDevicesTrackerTest {
         yieldUntil {
             deviceCacheManager.connectedDevices.value.size == 1
         }
-        val cache = deviceCacheManager.deviceCache(fakeDevice.deviceId)
+        val cache = deviceCacheManager.device(fakeDevice.deviceId).cache
         val value1 = cache.getOrPut(key) { 10 }
         val value2 = cache.getOrPut(key) { 11 }
         val value3 = cache.getOrPut(key) { 12 }
@@ -265,21 +265,16 @@ class ConnectedDevicesTrackerTest {
     }
 
     @Test
-    fun deviceCacheReturnsNoOpCacheForUnknownDevice() = runBlockingWithTimeout {
+    fun deviceThrowsNoSuchElementExceptionForUnknownDevice() = runBlockingWithTimeout {
         // Prepare
         val deviceCacheManager = ConnectedDevicesTrackerImpl(session)
-        val key = TestKey("foo")
+        exceptionRule.expect(NoSuchElementException::class.java)
 
         // Act
-        val cache = deviceCacheManager.deviceCache("2345")
-        val value1 = cache.getOrPut(key) { 10 }
-        val value2 = cache.getOrPut(key) { 11 }
-        val value3 = cache.getOrPut(key) { 12 }
+        deviceCacheManager.device("2345")
 
         // Assert
-        Assert.assertEquals(10, value1)
-        Assert.assertEquals(11, value2)
-        Assert.assertEquals(12, value3)
+        Assert.fail("Should not reach")
     }
 
     @Test
@@ -307,7 +302,7 @@ class ConnectedDevicesTrackerTest {
         yieldUntil {
             deviceCacheManager.connectedDevices.value.size == 1
         }
-        val deviceCache = deviceCacheManager.deviceCache(fakeDevice.deviceId)
+        val deviceCache = deviceCacheManager.device(fakeDevice.deviceId).cache
         deviceCache.getOrPut(key) { closeable }
         fakeAdb.disconnectDevice(fakeDevice.deviceId)
         yieldUntil {
