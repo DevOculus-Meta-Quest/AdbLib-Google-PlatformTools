@@ -72,13 +72,13 @@ internal class AdbSocketChannelImpl(
 
     @Throws(Exception::class)
     override fun close() {
-        logger.debug { "Closing socket channel" }
+        logger.debug { "${loggerPrefix()}: Closing socket channel" }
         socketChannel.close()
     }
 
     suspend fun connect(address: InetSocketAddress, timeout: Long, unit: TimeUnit) {
         logger.debug {
-            "Connecting to IP address $address, timeout=${remainingTimeoutToString(timeout, unit)}"
+            "${loggerPrefix()}: Connecting to IP address $address, timeout=${remainingTimeoutToString(timeout, unit)}"
         }
 
         // Note: We use a local completion handler so that we can report the address in
@@ -86,7 +86,7 @@ internal class AdbSocketChannelImpl(
         val connectCompletionHandler = object : ContinuationCompletionHandler<Void?>() {
 
             override fun completed(result: Void?) {
-                logger.debug { "Connection completed successfully" }
+                logger.debug { "${loggerPrefix()}: Connection completed successfully" }
             }
 
             override fun wrapError(e: Throwable): Throwable {
@@ -117,7 +117,7 @@ internal class AdbSocketChannelImpl(
 
     override suspend fun shutdownInput() {
         withContext(host.ioDispatcher) {
-            logger.debug { "Shutting down input channel" }
+            logger.debug { "${loggerPrefix()}: Shutting down input channel" }
             @Suppress("BlockingMethodInNonBlockingContext")
             socketChannel.shutdownInput()
         }
@@ -125,9 +125,13 @@ internal class AdbSocketChannelImpl(
 
     override suspend fun shutdownOutput() {
         withContext(host.ioDispatcher) {
-            logger.debug { "Shutting down output channel" }
+            logger.debug { "${loggerPrefix()}: Shutting down output channel" }
             @Suppress("BlockingMethodInNonBlockingContext")
             socketChannel.shutdownOutput()
         }
+    }
+
+    private fun loggerPrefix(): String {
+        return toString()
     }
 }

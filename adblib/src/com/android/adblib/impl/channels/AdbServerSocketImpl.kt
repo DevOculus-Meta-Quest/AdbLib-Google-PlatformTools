@@ -25,6 +25,7 @@ import java.net.InetSocketAddress
 import java.net.StandardSocketOptions
 import java.nio.channels.AsynchronousServerSocketChannel
 import java.nio.channels.AsynchronousSocketChannel
+import java.nio.channels.ClosedChannelException
 
 /**
  * Coroutine-friendly wrapper around an [AsynchronousServerSocketChannel] with the suspending
@@ -65,6 +66,18 @@ internal class AdbServerSocketImpl(
         return suspendChannelCoroutine(host, serverSocketChannel) { continuation ->
             serverSocketChannel.accept(continuation, acceptCompletionHandler)
         }
+    }
+
+    override fun toString(): String {
+        val localAddress = try {
+            serverSocketChannel.localAddress
+        } catch (e: ClosedChannelException) {
+            "<channel-closed>"
+        } catch (e: Throwable) {
+            "<error: $e>"
+        }
+
+        return "${this::class.java.simpleName}(localAddress=$localAddress)"
     }
 
     override fun close() {
