@@ -32,7 +32,8 @@ internal class ConnectedDeviceImpl(
 
     private val deviceInfoStateFlow = MutableStateFlow(deviceInfo)
 
-    private val cacheImpl = CoroutineScopeCacheImpl(session.scope)
+    private val cacheImpl =
+        CoroutineScopeCache.create(session.scope, "$session - device-serial='${deviceInfo.serialNumber}'")
 
     override val cache: CoroutineScopeCache
         get() = cacheImpl

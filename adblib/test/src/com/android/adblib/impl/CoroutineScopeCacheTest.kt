@@ -60,7 +60,7 @@ class CoroutineScopeCacheTest {
     fun test_GetOrPut_Works() {
         // Prepare
         val scope = CoroutineScope(SupervisorJob())
-        val cache = registerCloseable(CoroutineScopeCacheImpl(scope))
+        val cache = registerCloseable(CoroutineScopeCacheImpl(scope, "scope-description"))
 
         // Act
         val value = cache.getOrPut(TestKey("5")) { "bar" }
@@ -73,7 +73,7 @@ class CoroutineScopeCacheTest {
     fun test_GetOrPut_DoesNotOverrideValue() {
         // Prepare
         val scope = CoroutineScope(SupervisorJob())
-        val cache = registerCloseable(CoroutineScopeCacheImpl(scope))
+        val cache = registerCloseable(CoroutineScopeCacheImpl(scope, "scope-description"))
         val key = TestKey("5")
 
         // Act
@@ -89,7 +89,7 @@ class CoroutineScopeCacheTest {
     fun test_Close_CallsAutoCloseable() {
         // Prepare
         val scope = CoroutineScope(SupervisorJob())
-        val cache = registerCloseable(CoroutineScopeCacheImpl(scope))
+        val cache = registerCloseable(CoroutineScopeCacheImpl(scope, "scope-description"))
         val key = TestKey("5")
         val closeable = object : AutoCloseable {
             var closed = false
@@ -113,7 +113,7 @@ class CoroutineScopeCacheTest {
     fun test_ScopeCancel_CallsAutoCloseable() {
         // Prepare
         val scope = CoroutineScope(SupervisorJob())
-        val cache = registerCloseable(CoroutineScopeCacheImpl(scope))
+        val cache = registerCloseable(CoroutineScopeCacheImpl(scope, "scope-description"))
         val key = TestKey("5")
         val closeable = object : AutoCloseable {
             var closed = false
@@ -137,7 +137,7 @@ class CoroutineScopeCacheTest {
     fun test_GetOrPutSuspending_WaitsForCoroutineToExecute() = runBlockingWithTimeout {
         // Prepare
         val scope = CoroutineScope(SupervisorJob())
-        val cache = registerCloseable(CoroutineScopeCacheImpl(scope))
+        val cache = registerCloseable(CoroutineScopeCacheImpl(scope, "scope-description"))
         val key = TestKey("5")
 
         // Act
@@ -158,7 +158,7 @@ class CoroutineScopeCacheTest {
     fun test_GetOrPutSuspending_CallsDefaultValueOnlyOnce() = runBlockingWithTimeout {
         // Prepare
         val scope = CoroutineScope(SupervisorJob())
-        val cache = registerCloseable(CoroutineScopeCacheImpl(scope))
+        val cache = registerCloseable(CoroutineScopeCacheImpl(scope, "scope-description"))
         val key = TestKey("5")
         val syncChannel = Channel<Unit>()
         var callCount = 0
@@ -192,7 +192,7 @@ class CoroutineScopeCacheTest {
     fun test_GetOrPutSuspending_retryAfterFailureCallsDefaultValueOnlyOnce() = runBlockingWithTimeout {
         // Prepare
         val scope = CoroutineScope(SupervisorJob())
-        val cache = registerCloseable(CoroutineScopeCacheImpl(scope))
+        val cache = registerCloseable(CoroutineScopeCacheImpl(scope, "scope-description"))
         val key = TestKey("5")
         val syncChannel = Channel<Unit>()
         var callCount = 0
@@ -238,7 +238,7 @@ class CoroutineScopeCacheTest {
     fun test_GetOrPutSuspending_WaitsForPendingComputation() = runBlockingWithTimeout {
         // Prepare
         val scope = CoroutineScope(SupervisorJob())
-        val cache = registerCloseable(CoroutineScopeCacheImpl(scope))
+        val cache = registerCloseable(CoroutineScopeCacheImpl(scope, "scope-description"))
         val key = TestKey("5")
 
         // Act
@@ -267,7 +267,7 @@ class CoroutineScopeCacheTest {
     fun test_GetOrPutSuspending_ReturnsFastValueThenReturnsCoroutineValue() = runBlockingWithTimeout {
         // Prepare
         val scope = CoroutineScope(SupervisorJob())
-        val cache = registerCloseable(CoroutineScopeCacheImpl(scope))
+        val cache = registerCloseable(CoroutineScopeCacheImpl(scope, "scope-description"))
         val key = TestKey("5")
 
         // Act
@@ -292,7 +292,7 @@ class CoroutineScopeCacheTest {
     fun test_GetOrPutSuspendingWithFastDefault_CallsDefaultValueOnlyOnce() = runBlockingWithTimeout {
         // Prepare
         val scope = CoroutineScope(SupervisorJob())
-        val cache = registerCloseable(CoroutineScopeCacheImpl(scope))
+        val cache = registerCloseable(CoroutineScopeCacheImpl(scope, "scope-description"))
         val key = TestKey("5")
         val syncChannel = Channel<Unit>()
         var callCount = 0
@@ -322,7 +322,7 @@ class CoroutineScopeCacheTest {
     fun test_GetOrPut_UsesDifferentCacheThanGetOrPutSuspending() = runBlockingWithTimeout {
         // Prepare
         val scope = CoroutineScope(SupervisorJob())
-        val cache = registerCloseable(CoroutineScopeCacheImpl(scope))
+        val cache = registerCloseable(CoroutineScopeCacheImpl(scope, "scope-description"))
         val key = TestKey("5")
 
         // Act
@@ -338,7 +338,7 @@ class CoroutineScopeCacheTest {
     fun test_GetOrPutSuspending_RetriesOnCoroutineException() = runBlockingWithTimeout {
         // Prepare
         val scope = CoroutineScope(SupervisorJob())
-        val cache = registerCloseable(CoroutineScopeCacheImpl(scope))
+        val cache = registerCloseable(CoroutineScopeCacheImpl(scope, "scope-description"))
         val key = TestKey("5")
 
         // Act
@@ -373,7 +373,7 @@ class CoroutineScopeCacheTest {
     fun test_GetOrPutSuspendingWithFastDefault_RetriesOnCoroutineException() = runBlockingWithTimeout {
         // Prepare
         val scope = CoroutineScope(SupervisorJob())
-        val cache = registerCloseable(CoroutineScopeCacheImpl(scope))
+        val cache = registerCloseable(CoroutineScopeCacheImpl(scope, "scope-description"))
         val key = TestKey("5")
 
         // Act
@@ -402,7 +402,7 @@ class CoroutineScopeCacheTest {
     fun test_Close_CancelsScope() = runBlockingWithTimeout {
         // Prepare
         val scope = CoroutineScope(SupervisorJob())
-        val cache = registerCloseable(CoroutineScopeCacheImpl(scope))
+        val cache = registerCloseable(CoroutineScopeCacheImpl(scope, "scope-description"))
         val key = TestKey("5")
 
         // Act
@@ -428,7 +428,7 @@ class CoroutineScopeCacheTest {
     fun test_computation_getsCancelledOnCacheClose() = runBlockingWithTimeout {
         // Prepare
         val scope = CoroutineScope(SupervisorJob())
-        val cache = registerCloseable(CoroutineScopeCacheImpl(scope))
+        val cache = registerCloseable(CoroutineScopeCacheImpl(scope, "scope-description"))
         val key = TestKey("5")
         exceptionRule.expect(CancellationException::class.java)
         exceptionRule.expectMessage("CoroutineScopeCacheImpl has been closed")
@@ -452,7 +452,7 @@ class CoroutineScopeCacheTest {
     fun test_computationWithFastDefault_getsCancelledOnCacheClose() = runBlockingWithTimeout {
         // Prepare
         val scope = CoroutineScope(SupervisorJob())
-        val cache = registerCloseable(CoroutineScopeCacheImpl(scope))
+        val cache = registerCloseable(CoroutineScopeCacheImpl(scope, "scope-description"))
         val key = TestKey("5")
 
         // Act
@@ -483,7 +483,7 @@ class CoroutineScopeCacheTest {
     fun test_GetOrPutSynchronized_Works() {
         // Prepare
         val scope = CoroutineScope(SupervisorJob())
-        val cache = registerCloseable(CoroutineScopeCacheImpl(scope))
+        val cache = registerCloseable(CoroutineScopeCacheImpl(scope, "scope-description"))
         val key = TestKey("5")
 
         // Act
@@ -497,7 +497,7 @@ class CoroutineScopeCacheTest {
     fun test_GetOrPutSynchronized_DoesNotOverrideValue() {
         // Prepare
         val scope = CoroutineScope(SupervisorJob())
-        val cache = registerCloseable(CoroutineScopeCacheImpl(scope))
+        val cache = registerCloseable(CoroutineScopeCacheImpl(scope, "scope-description"))
         val key = TestKey("5")
 
         // Act
@@ -513,7 +513,7 @@ class CoroutineScopeCacheTest {
     fun test_GetOrPutSynchronized_IsSynchronized(): Unit = runBlockingWithTimeout {
         // Prepare
         val scope = CoroutineScope(SupervisorJob())
-        val cache = registerCloseable(CoroutineScopeCacheImpl(scope))
+        val cache = registerCloseable(CoroutineScopeCacheImpl(scope, "scope-description"))
         class MyValue
         val key = CoroutineScopeCache.Key<MyValue>("myValue")
 
@@ -537,7 +537,7 @@ class CoroutineScopeCacheTest {
     fun test_GetOrPutSynchronized_Supports_AutoCloseable(): Unit = runBlockingWithTimeout {
         // Prepare
         val scope = CoroutineScope(SupervisorJob())
-        val cache = registerCloseable(CoroutineScopeCacheImpl(scope))
+        val cache = registerCloseable(CoroutineScopeCacheImpl(scope, "scope-description"))
         class MyValue : AutoCloseable {
             var closed = false
             override fun close() {
@@ -558,7 +558,7 @@ class CoroutineScopeCacheTest {
     fun test_usingClosedCache_getOrPut() = runBlockingWithTimeout {
         // Prepare
         val scope = CoroutineScope(SupervisorJob())
-        val cache = registerCloseable(CoroutineScopeCacheImpl(scope))
+        val cache = registerCloseable(CoroutineScopeCacheImpl(scope, "scope-description"))
         val key = TestKey("5")
 
         // Act
@@ -576,7 +576,7 @@ class CoroutineScopeCacheTest {
         runBlockingWithTimeout {
             // Prepare
             val scope = CoroutineScope(SupervisorJob())
-            val cache = registerCloseable(CoroutineScopeCacheImpl(scope))
+            val cache = registerCloseable(CoroutineScopeCacheImpl(scope, "scope-description"))
             val key = TestKey("5")
             exceptionRule.expect(CancellationException::class.java)
             exceptionRule.expectMessage("CoroutineScopeCacheImpl has been closed")
@@ -593,7 +593,7 @@ class CoroutineScopeCacheTest {
     fun test_usingClosedCache_getOrPutSuspendingWithFastDefault() = runBlockingWithTimeout {
         // Prepare
         val scope = CoroutineScope(SupervisorJob())
-        val cache = registerCloseable(CoroutineScopeCacheImpl(scope))
+        val cache = registerCloseable(CoroutineScopeCacheImpl(scope, "scope-description"))
         val key = TestKey("5")
 
         // Act

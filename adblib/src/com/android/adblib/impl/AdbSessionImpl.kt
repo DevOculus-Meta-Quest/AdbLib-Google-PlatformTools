@@ -45,6 +45,11 @@ internal class AdbSessionImpl(
 
     private var closed = false
 
+    private val description = when (parentSession) {
+        null -> "${AdbSession::class.simpleName}('ROOT')"
+        else -> "${AdbSession::class.simpleName}(id=$id, parent=$parentSession)"
+    }
+
     /**
      * If there is a parent session, create a child scope of that session. If not, create
      * a standalone scope.
@@ -70,7 +75,7 @@ internal class AdbSessionImpl(
             return field
         }
 
-    private val _cache = CoroutineScopeCacheImpl(scope)
+    private val _cache = CoroutineScopeCache.create(scope, description)
     override val cache: CoroutineScopeCache
         get() {
             throwIfClosed()
@@ -98,10 +103,7 @@ internal class AdbSessionImpl(
     }
 
     override fun toString(): String {
-        return when(parentSession) {
-            null -> "${AdbSession::class.simpleName}('ROOT')"
-            else -> "${AdbSession::class.simpleName}(id=$id, parent=$parentSession)"
-        }
+        return description
     }
 
     private fun createHostServices(): AdbHostServices {

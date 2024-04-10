@@ -113,8 +113,8 @@ interface CoroutineScopeCache : AutoCloseable {
 
 
     companion object {
-        fun create(parentScope: CoroutineScope): CoroutineScopeCache {
-            return CoroutineScopeCacheImpl(parentScope)
+        fun create(parentScope: CoroutineScope, description: String): CoroutineScopeCache {
+            return CoroutineScopeCacheImpl(parentScope, description)
         }
     }
 }

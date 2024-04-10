@@ -39,7 +39,7 @@ class FakeAdbSession : AdbSession {
 
     override val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-    override val cache: CoroutineScopeCache = CoroutineScopeCacheImpl(scope)
+    override val cache: CoroutineScopeCache = CoroutineScopeCacheImpl(scope, "fake-session")
         get() {
             throwIfClosed()
             return field

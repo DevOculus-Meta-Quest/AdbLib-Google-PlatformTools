@@ -31,7 +31,8 @@ import kotlinx.coroutines.yield
 import java.util.concurrent.ConcurrentHashMap
 
 internal class CoroutineScopeCacheImpl(
-    parentScope: CoroutineScope
+    parentScope: CoroutineScope,
+    val description: String
 ) : CoroutineScopeCache {
 
     override var scope = parentScope.createChildScope(isSupervisor = true)
@@ -81,7 +82,7 @@ internal class CoroutineScopeCacheImpl(
 
     override fun close() {
         isClosed = true
-        scope.cancel("${this::class.simpleName} has been closed")
+        scope.cancel("$description: ${this::class.simpleName} has been closed")
         valueMap.close()
         suspendingMap.close()
     }
