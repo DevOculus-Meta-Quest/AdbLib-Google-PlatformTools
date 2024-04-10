@@ -16,7 +16,9 @@
 package com.android.adblib
 
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -26,6 +28,7 @@ import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.retryWhen
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.withContext
 import java.nio.file.Path
 import java.nio.file.attribute.FileTime
 import java.time.Duration
@@ -132,6 +135,114 @@ fun <R> ConnectedDevice.flowWhenOnline(
             }
             device.scope.isActive
         }.flowOn(session.host.ioDispatcher)
+}
+
+/**
+ * Returns a [WithDeviceScopeContext] used to invoke the [action] coroutine using the
+ * [CoroutineScope] of this [ConnectedDevice].
+ *
+ * * Optionally call [withRetry][WithDeviceScopeContext.withRetry] to set a predicate to invoke
+ * as retry policy
+ * * Optionally call [withFinally][WithDeviceScopeContext.withFinally] to set an action to
+ * invoke before [execute][WithDeviceScopeContext.execute] terminates (exceptionally or not), i.e.
+ * when [action] throws an exception not handled by [withRetry][WithDeviceScopeContext.withRetry],
+ * or when the [withRetry][WithDeviceScopeContext.withRetry] predicate throws an exception, or
+ * when the [ConnectedDevice.scope] is cancelled.
+ * * Call [execute][WithDeviceScopeContext.execute] to start the execution of [action], using the
+ * previously applied [withRetry][WithDeviceScopeContext.withRetry] and
+ * [withFinally][WithDeviceScopeContext.withFinally] lamdbas.
+ *
+ *  Example:
+ *  ```
+ *      device.withScopeContext {
+ *          device.trackJdwp().collect {
+ *             (...)
+ *          }
+ *      }.withRetry { throwable ->
+ *          delay(2_000)
+ *          true // try again
+ *      }.withFinally {
+ *          (...)
+ *      }.execute()
+ *  ```
+ */
+fun ConnectedDevice.withScopeContext(
+    action: suspend CoroutineScope.() -> Unit
+): WithDeviceScopeContext {
+    return WithDeviceScopeContext(this, action)
+}
+
+class WithDeviceScopeContext(
+    private val device: ConnectedDevice,
+    private val action: suspend CoroutineScope.() -> Unit
+) {
+
+    private val logger = adbLogger(device.session).withPrefix("device=$device - ")
+
+    private var retryPredicate: suspend (Throwable) -> Boolean = { false }
+    private var finallyAction: () -> Unit = {}
+
+    /**
+     * Sets the [predicate] to invoke when the block passed to [execute] throws a [Throwable]
+     * and the device is still connected. This is a suspending function, so [delay] can
+     * be safely used.
+     */
+    fun withRetry(predicate: suspend (Throwable) -> Boolean): WithDeviceScopeContext {
+        this.retryPredicate = predicate
+        return this
+    }
+
+    /**
+     * Sets the [action] to invoke before [execute] terminates (exceptionally or not), i.e.
+     * * either when [action] throws an exception not handled by [withRetry],
+     * * or when the [withRetry] predicate throws an exception,
+     * * or when the [ConnectedDevice.scope] is cancelled
+     */
+    fun withFinally(action: () -> Unit): WithDeviceScopeContext {
+        this.finallyAction = action
+        return this
+    }
+
+    /**
+     * Executes the coroutine [action] in the context of the [scope][ConnectedDevice.scope] of
+     * the [ConnectedDevice], retrying on failure for as long as the device scope is
+     * [active][CoroutineScope.isActive].
+     */
+    suspend fun execute() {
+        try {
+            withContext(device.scope.coroutineContext) {
+                var shouldRetry = true
+                while (shouldRetry) {
+                    ensureActive()
+                    try {
+                        action()
+                        // If action succeeds, we don't need to retry anymore
+                        shouldRetry = false
+                    } catch (t: Throwable) {
+                        logger.verbose(t) { "Exception occurred during execution of service: $t" }
+                        runCatching {
+                            retryPredicate(t)
+                        }.onSuccess {
+                            shouldRetry = it
+                            if (!shouldRetry) {
+                                throw t
+                            }
+                        }.onFailure { throwable ->
+                            logger.debug(throwable) {
+                                "Retry predicate failed with an exception, " +
+                                        "rethrowing original exception '$t'"
+                            }
+                            t.addSuppressed(throwable)
+                            throw t
+                        }
+                    }
+                }
+            }
+        } finally {
+            logger.debug { "End of retry loop, calling finally (device scope=${device.scope})" }
+            finallyAction()
+        }
+    }
 }
 
 private val ShellManagerKey = CoroutineScopeCache.Key<ShellManager>("ShellManager")
