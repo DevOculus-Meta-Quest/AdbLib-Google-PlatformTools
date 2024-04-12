@@ -58,7 +58,7 @@ interface ConnectedDevice {
     /**
      * The [StateFlow] of [DeviceInfo] corresponding to change of state of the device.
      * Once the device is disconnected, the [DeviceInfo.deviceState] is always
-     * set to [DeviceState.OFFLINE].
+     * set to [DeviceState.DISCONNECTED].
      */
     val deviceInfoFlow: StateFlow<DeviceInfo>
 }
