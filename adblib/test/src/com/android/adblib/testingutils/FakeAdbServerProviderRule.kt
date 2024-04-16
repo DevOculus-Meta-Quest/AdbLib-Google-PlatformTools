@@ -16,6 +16,7 @@
 package com.android.adblib.testingutils
 
 import com.android.adblib.AdbSession
+import com.android.adblib.AdbSessionHost
 import com.android.adblib.SOCKET_CONNECT_TIMEOUT_MS
 import org.junit.rules.ExternalResource
 import java.time.Duration
@@ -41,11 +42,7 @@ open class FakeAdbServerProviderRule(
     public override fun before() {
         fakeAdb = FakeAdbServerProvider().configure().build().start()
         host = TestingAdbSessionHost()
-        adbSession = AdbSession.create(
-            host,
-            createChannelProvider(),
-            Duration.ofMillis(SOCKET_CONNECT_TIMEOUT_MS),
-        )
+        adbSession = createTestAdbSession(host)
     }
 
     override fun after() {
@@ -56,5 +53,11 @@ open class FakeAdbServerProviderRule(
 
     fun createChannelProvider(): FakeAdbServerProvider.TestingChannelProvider {
         return fakeAdb.createChannelProvider(host)
+    }
+
+    fun createTestAdbSession(host: AdbSessionHost): AdbSession {
+        return AdbSession.create(host,
+                                 createChannelProvider(),
+                                 Duration.ofMillis(SOCKET_CONNECT_TIMEOUT_MS))
     }
 }
