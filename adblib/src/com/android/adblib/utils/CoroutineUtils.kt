@@ -18,6 +18,7 @@ package com.android.adblib.utils
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.InternalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
@@ -71,6 +72,49 @@ fun CoroutineScope.createChildScope(
         Job(this.coroutineContext.job)
     }
     return CoroutineScope(this.coroutineContext + newJob + context)
+}
+
+/**
+ * Runs [block] as a regular `suspend` function, except that it gets cancelled when [otherScope]
+ * is cancelled.
+ */
+suspend inline fun <R> runAlongOtherScope(
+    otherScope: CoroutineScope,
+    crossinline block: suspend () -> R
+): R {
+    // Attach a completion handler that cancels this coroutine when "otherScope" is cancelled
+    // The completion handler is removed as soon as the execution of `block` ends, so that
+    // we don't cancel the caller at some point later in the execution path.
+    val currentJob = currentCoroutineContext().job
+
+    // Note: As of April 2024, the `invokeOnCompletion` overload that take `onCancelling` parameter
+    // is marked as internal API. The other overload is fully public and supported, but uses the
+    // `onCancelling = false` semantics, which delays the completion handler invocation, which
+    // may lead to deadlocks if using a "single thread" Dispatcher, i.e. `block` may not be
+    // cancelled right when `outerScope` is cancelled, leading to `block` still executing and
+    // using a Dispatcher slot.
+    @OptIn(InternalCoroutinesApi::class)
+    val handler = otherScope.coroutineContext.job.invokeOnCompletion(onCancelling = true) { throwable ->
+        when (throwable) {
+            is CancellationException -> {
+                currentJob.cancel(throwable)
+            }
+
+            null -> {
+                /* Nothing to do */
+            }
+
+            else -> {
+                currentJob.cancel(CancellationException(throwable.message, throwable))
+            }
+        }
+    }
+
+    return try {
+        block()
+    } finally {
+        handler.dispose()
+    }
 }
 
 /**
