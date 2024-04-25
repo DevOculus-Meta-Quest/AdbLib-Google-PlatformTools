@@ -86,15 +86,7 @@ suspend inline fun <R> runAlongOtherScope(
     // The completion handler is removed as soon as the execution of `block` ends, so that
     // we don't cancel the caller at some point later in the execution path.
     val currentJob = currentCoroutineContext().job
-
-    // Note: As of April 2024, the `invokeOnCompletion` overload that take `onCancelling` parameter
-    // is marked as internal API. The other overload is fully public and supported, but uses the
-    // `onCancelling = false` semantics, which delays the completion handler invocation, which
-    // may lead to deadlocks if using a "single thread" Dispatcher, i.e. `block` may not be
-    // cancelled right when `outerScope` is cancelled, leading to `block` still executing and
-    // using a Dispatcher slot.
-    @OptIn(InternalCoroutinesApi::class)
-    val handler = otherScope.coroutineContext.job.invokeOnCompletion(onCancelling = true) { throwable ->
+    val handler = otherScope.coroutineContext.job.invokeOnCompletion { throwable ->
         when (throwable) {
             is CancellationException -> {
                 currentJob.cancel(throwable)
