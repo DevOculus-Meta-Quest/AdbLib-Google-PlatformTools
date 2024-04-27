@@ -22,6 +22,7 @@ import com.android.adblib.adbLogger
 import com.android.adblib.impl.TimeoutTracker
 import kotlinx.coroutines.CancellableContinuation
 import java.io.EOFException
+import java.io.IOException
 import java.nio.ByteBuffer
 import java.nio.channels.AsynchronousCloseException
 import java.nio.channels.AsynchronousFileChannel
@@ -104,6 +105,17 @@ internal abstract class ChannelReadOrWriteHandler protected constructor(
                 CancellationException(e)
             } else {
                 e
+            }
+        }
+
+        override fun failed(e: Throwable, continuation: CancellableContinuation<Unit>) {
+            if (e is IOException &&
+                    e.message == "The specified network name is no longer available") {
+                // Treat this Windows-specific exception as the end of channel.
+                completionHandlerCompleted(-1, continuation)
+            }
+            else {
+                super.failed(e, continuation)
             }
         }
     }
