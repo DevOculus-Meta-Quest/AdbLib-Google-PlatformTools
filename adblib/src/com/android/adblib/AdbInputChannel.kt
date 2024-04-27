@@ -16,8 +16,8 @@
 package com.android.adblib
 
 import com.android.adblib.impl.TimeoutTracker
-import com.android.adblib.impl.channels.AdbInputChannelReader
 import com.android.adblib.impl.channels.AdbChannelReaderToReceiveChannel
+import com.android.adblib.impl.channels.AdbInputChannelReader
 import com.android.adblib.utils.AdbProtocolUtils
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.ReceiveChannel
