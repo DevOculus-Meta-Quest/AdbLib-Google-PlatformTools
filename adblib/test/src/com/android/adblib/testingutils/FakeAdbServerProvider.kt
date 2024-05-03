@@ -37,7 +37,7 @@ import java.util.concurrent.TimeUnit
  */
 val FAKE_ADB_SERVER_EXECUTOR_TIMEOUT_MS = TimeUnit.MINUTES.toMillis(2)
 
-class FakeAdbServerProvider internal constructor(): AutoCloseable {
+class FakeAdbServerProvider: AutoCloseable {
 
     val inetAddress: InetAddress
         get() = server?.inetAddress ?: throw IllegalStateException("Server not started")
