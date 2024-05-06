@@ -41,25 +41,24 @@ interface ConnectedDevicesTracker {
 }
 
 /**
- * Returns a [ConnectedDevice] instance for a given [selector], or throws a
- * [NoSuchElementException] if the device is not currently connected.
+ * Returns a [ConnectedDevice] instance for a given [selector], or `null` if the device
+ * is not currently connected.
  */
-suspend fun ConnectedDevicesTracker.device(selector: DeviceSelector): ConnectedDevice {
+suspend fun ConnectedDevicesTracker.device(selector: DeviceSelector): ConnectedDevice? {
     val serialNumber = try {
         this.session.hostServices.getSerialNo(selector)
     } catch (e: AdbFailResponseException) {
-        throw NoSuchElementException("Device $selector is not currently connected")
+        return null
     }
     return this.device(serialNumber)
 }
 
 /**
- * Returns a [ConnectedDevice] instance for a given [serialNumber], or throws a
- * [NoSuchElementException] if the device is not currently connected.
+ * Returns a [ConnectedDevice] instance for a given [serialNumber], or `null`
+ * if the device is not currently connected.
  */
-fun ConnectedDevicesTracker.device(serialNumber: String): ConnectedDevice {
+fun ConnectedDevicesTracker.device(serialNumber: String): ConnectedDevice? {
     return this.connectedDevices.value.firstOrNull { it.serialNumber == serialNumber }
-        ?: throw NoSuchElementException("Device $serialNumber is not currently connected")
 }
 
 /**

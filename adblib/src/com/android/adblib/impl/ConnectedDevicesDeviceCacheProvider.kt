@@ -32,11 +32,7 @@ internal class ConnectedDevicesDeviceCacheProvider(val adbSession: AdbSession) :
         cacheKey: CoroutineScopeCache.Key<R>,
         block: suspend () -> R
     ): R {
-        val deviceCache = try {
-            adbSession.connectedDevicesTracker.device(device).cache
-        } catch (e: NoSuchElementException) {
-            null
-        }
+        val deviceCache = adbSession.connectedDevicesTracker.device(device)?.cache
 
         return deviceCache?.getOrPutSuspending(cacheKey) { block() } ?: block()
     }
