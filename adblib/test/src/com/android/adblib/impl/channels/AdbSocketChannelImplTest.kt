@@ -25,6 +25,7 @@ import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
@@ -169,7 +170,13 @@ class AdbSocketChannelImplTest {
             channel.read(buffer)
         }
         connected.await()
-        fakeAdb.close()
+
+        launch {
+            // Delay `fakeAdb.close()` for `channel.read()` to start
+            delay(100)
+            fakeAdb.close()
+        }
+
         deferredByteCount.await()
 
         // Assert
