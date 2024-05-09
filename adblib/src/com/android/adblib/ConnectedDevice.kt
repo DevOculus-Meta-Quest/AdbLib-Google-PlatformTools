@@ -16,7 +16,6 @@
 package com.android.adblib
 
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow

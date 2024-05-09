@@ -21,7 +21,7 @@ class TestingAdbUsageTracker : AdbUsageTracker{
 
     val loggedEvents = mutableListOf<AdbUsageTracker.Event>()
 
-    override fun logUsage(event: AdbUsageTracker.Event) {
+    override suspend fun logUsage(event: AdbUsageTracker.Event) {
         loggedEvents.add(event)
     }
 }

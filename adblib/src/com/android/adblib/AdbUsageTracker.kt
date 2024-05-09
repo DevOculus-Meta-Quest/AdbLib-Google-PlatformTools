@@ -18,7 +18,7 @@ package com.android.adblib
 interface AdbUsageTracker {
 
     /** Log data about the usage of an adblib feature */
-    fun logUsage(event: Event)
+    suspend fun logUsage(event: Event)
 
     data class Event(
         // Info about the connected device
@@ -46,7 +46,7 @@ interface AdbUsageTracker {
 
 internal class NoopAdbUsageTracker : AdbUsageTracker {
 
-    override fun logUsage(event: AdbUsageTracker.Event) {
+    override suspend fun logUsage(event: AdbUsageTracker.Event) {
         // Do nothing
     }
 }
