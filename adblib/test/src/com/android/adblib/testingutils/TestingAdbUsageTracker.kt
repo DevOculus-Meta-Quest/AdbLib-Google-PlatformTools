@@ -16,10 +16,12 @@
 package com.android.adblib.testingutils
 
 import com.android.adblib.AdbUsageTracker
+import java.util.Collections
 
 class TestingAdbUsageTracker : AdbUsageTracker{
 
-    val loggedEvents = mutableListOf<AdbUsageTracker.Event>()
+    val loggedEvents: MutableList<AdbUsageTracker.Event> =
+        Collections.synchronizedList(mutableListOf<AdbUsageTracker.Event>())
 
     override suspend fun logUsage(event: AdbUsageTracker.Event) {
         loggedEvents.add(event)
