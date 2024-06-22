@@ -24,6 +24,7 @@ import com.android.adblib.utils.ResizableBuffer
 import java.io.BufferedInputStream
 import java.io.IOException
 import java.io.InputStream
+import java.io.OutputStream
 import java.net.InetSocketAddress
 import java.nio.ByteBuffer
 import java.nio.channels.AsynchronousServerSocketChannel
@@ -154,6 +155,13 @@ interface AdbChannelFactory {
      * The [inputStream] is closed when this channel is [closed][AdbInputChannel.close].
      */
     fun wrapInputStream(inputStream: InputStream): AdbInputChannel
+
+    /**
+     * Creates an [AdbOutputChannel] that wraps the provided [OutputStream] to write to it.
+     *
+     * The [outputStream] is closed when this channel is [closed][AdbOutputChannel.close].
+     */
+    fun wrapOutputStream(outputStream: OutputStream): AdbOutputChannel
 }
 
 /**
