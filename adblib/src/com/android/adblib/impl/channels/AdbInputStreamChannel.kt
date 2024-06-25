@@ -12,6 +12,8 @@ const val DEFAULT_CHANNEL_BUFFER_SIZE = DEFAULT_BUFFER_SIZE
 
 /**
  * Implementation of [AdbInputChannel] over an arbitrary [InputStream]
+ *
+ * TODO(rpaquay): Add unit test
  */
 internal class AdbInputStreamChannel(
   private val host: AdbSessionHost,

@@ -2,15 +2,17 @@ package com.android.adblib.impl.channels
 
 import com.android.adblib.AdbOutputChannel
 import com.android.adblib.AdbSession
-import com.android.adblib.AdbSessionHost
 import com.android.adblib.adbLogger
 import com.android.adblib.withErrorTimeout
 import java.io.OutputStream
 import java.nio.ByteBuffer
 import java.util.concurrent.TimeUnit
+import kotlin.math.min
 
 /**
  * Implementation of [AdbOutputChannel] over a [OutputStream]
+ *
+ * TODO(rpaquay): Add unit test
  */
 internal class AdbOutputStreamChannel(
   private val session: AdbSession,
@@ -36,7 +38,7 @@ internal class AdbOutputStreamChannel(
         session.withErrorTimeout(timeout, unit) {
             // Note: Since OutputStream.write is a blocking I/O operation, we use the IO dispatcher
             runInterruptibleIO(session.blockingIoDispatcher) {
-                val count = buffer.remaining()
+                val count = min(bytes.size, buffer.remaining())
                 buffer.get(bytes, 0, count)
                 stream.write(bytes, 0, count)
             }
