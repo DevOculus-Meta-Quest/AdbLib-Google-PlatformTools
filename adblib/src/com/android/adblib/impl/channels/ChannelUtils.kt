@@ -15,8 +15,8 @@
  */
 package com.android.adblib.impl.channels
 
+import com.android.adblib.AdbLogger
 import com.android.adblib.AdbSessionHost
-import com.android.adblib.adbLogger
 import com.android.adblib.utils.closeOnException
 import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.CancellationException
@@ -48,16 +48,16 @@ import kotlin.coroutines.resumeWithException
  * Note: This method is `inline` to prevent object allocation(s) when capturing [block].
  */
 internal suspend inline fun <T> suspendChannelCoroutine(
-    host: AdbSessionHost,
+    logger: AdbLogger,
     channel: Channel,
     crossinline block: (CancellableContinuation<T>) -> Unit
 ): T {
     return suspendCancellableCoroutine { continuation ->
         // Ensure channel is closed (and any pending async operation is cancelled) if
         // the coroutine is cancelled
-        channel.closeOnCancel(host, continuation)
+        channel.closeOnCancel(logger, continuation)
 
-        wrapContinuationBlock(continuation) {
+        wrapContinuationBlock(logger, continuation) {
             block(continuation)
         }
     }
@@ -81,6 +81,7 @@ internal suspend inline fun <T> suspendChannelCoroutine(
  * Note: This method is `inline` to prevent object allocation(s) when capturing [block].
  */
 internal suspend inline fun <T> suspendChannelCoroutine(
+    logger: AdbLogger,
     host: AdbSessionHost,
     channel: Channel,
     timeout: Long,
@@ -88,13 +89,13 @@ internal suspend inline fun <T> suspendChannelCoroutine(
     crossinline block: (CancellableContinuation<T>) -> Unit
 ): T {
     return if (timeout == Long.MAX_VALUE) {
-        suspendChannelCoroutine(host, channel, block)
+        suspendChannelCoroutine(logger, channel, block)
     } else {
         coroutineScope {
             // Run the channel coroutine in a child async scope, so that we can cancel
             // it with a timeout if needed.
             val deferredResult = async {
-                suspendChannelCoroutine(host, channel, block)
+                suspendChannelCoroutine(logger, channel, block)
             }
             host.timeProvider.withErrorTimeout(timeout, unit) {
                 deferredResult.await()
@@ -131,6 +132,7 @@ internal suspend inline fun <T> runBlockingWithTimeout(
 }
 
 private inline fun <T> wrapContinuationBlock(
+    logger: AdbLogger,
     continuation: CancellableContinuation<T>,
     crossinline block: () -> Unit
 ) {
@@ -139,6 +141,7 @@ private inline fun <T> wrapContinuationBlock(
     try {
         block()
     } catch (t: Throwable) {
+        logger.debug { "'continuation[${continuation.hashCode()}].resumeWithException($t)', isCompleted=${continuation.isCompleted}, isCancelled=${continuation.isCancelled}" }
         continuation.resumeWithException(t)
     }
 }
@@ -151,13 +154,10 @@ private inline fun <T> wrapContinuationBlock(
  * Call this method to ensure that all pending operations on an asynchronous medium
  * (e.g. [AsynchronousSocketChannel]) are immediately terminated when a coroutine is cancelled
  *
- * [host] is used for logging purposes only.
- *
  * See [https://github.com/Kotlin/kotlinx.coroutines/blob/87eaba8a287285d4c47f84c91df7671fcb58271f/integration/kotlinx-coroutines-nio/src/Nio.kt#L126]
  * for the initial code this implementation is based on.
  */
-private fun Closeable.closeOnCancel(host: AdbSessionHost, cont: CancellableContinuation<*>) {
-    val logger = adbLogger(host)
+private fun Closeable.closeOnCancel(logger: AdbLogger, cont: CancellableContinuation<*>) {
     try {
         cont.invokeOnCancellation {
             logger.debug { "Closing resource because suspended coroutine has been cancelled" }

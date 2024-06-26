@@ -83,7 +83,7 @@ internal class AdbSocketChannelImpl(
 
         // Note: We use a local completion handler so that we can report the address in
         // case of failure.
-        val connectCompletionHandler = object : ContinuationCompletionHandler<Void?>() {
+        val connectCompletionHandler = object : ContinuationCompletionHandler<Void?>(host) {
 
             override fun completed(result: Void?) {
                 logger.debug { "${loggerPrefix()}: Connection completed successfully" }
@@ -94,7 +94,7 @@ internal class AdbSocketChannelImpl(
             }
         }
 
-        suspendChannelCoroutine<Unit>(host, socketChannel, timeout, unit) { continuation ->
+        suspendChannelCoroutine<Unit>(logger, host, socketChannel, timeout, unit) { continuation ->
             socketChannel.connect(address, continuation, connectCompletionHandler)
         }
     }

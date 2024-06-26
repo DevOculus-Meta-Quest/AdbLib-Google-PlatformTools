@@ -55,7 +55,7 @@ internal abstract class ChannelReadOrWriteHandler protected constructor(
 
     private val logger = adbLogger(host)
 
-    private val completionHandler = object : ContinuationCompletionHandler<Int>() {
+    private val completionHandler = object : ContinuationCompletionHandler<Int>(host) {
         override fun completed(result: Int, continuation: CancellableContinuation<Unit>) {
             completionHandlerCompleted(result, continuation)
         }
@@ -162,11 +162,11 @@ internal abstract class ChannelReadOrWriteHandler protected constructor(
         }
 
         return if (supportsTimeout) {
-            suspendChannelCoroutine(host, nioChannel) { continuation ->
+            suspendChannelCoroutine(logger, nioChannel) { continuation ->
                 asyncReadOrWrite(buffer, timeout, unit, continuation, completionHandler)
             }
         } else {
-            suspendChannelCoroutine(host, nioChannel, timeout, unit) { continuation ->
+            suspendChannelCoroutine(logger, host, nioChannel, timeout, unit) { continuation ->
                 asyncReadOrWrite(buffer, timeout, unit, continuation, completionHandler)
             }
         }
@@ -208,6 +208,7 @@ internal abstract class ChannelReadOrWriteHandler protected constructor(
                 runExactlyCompleted(result, continuation)
             }
         } catch (t: Throwable) {
+            logger.debug { "'continuation[${continuation.hashCode()}].resumeWithException($t)', isCompleted=${continuation.isCompleted}, isCancelled=${continuation.isCancelled}" }
             continuation.resumeWithException(t)
         }
     }
@@ -216,6 +217,7 @@ internal abstract class ChannelReadOrWriteHandler protected constructor(
         try {
             asyncReadOrWriteCompleted(result)
         } finally {
+            logger.debug { "'continuation[${continuation.hashCode()}].resume(Unit)', isCompleted=${continuation.isCompleted}, isCancelled=${continuation.isCancelled}" }
             continuation.resume(Unit)
         }
     }
@@ -229,6 +231,7 @@ internal abstract class ChannelReadOrWriteHandler protected constructor(
         // EOF, stop reading more (-1 never happens with a "write" operation)
         if (result == -1) {
             logger.verbose { "Reached EOF" }
+            logger.debug { "'continuation[${continuation.hashCode()}].resumeWithException(EOFException(EOF))', isCompleted=${continuation.isCompleted}, isCancelled=${continuation.isCancelled}" }
             continuation.resumeWithException(EOFException("Unexpected end of asynchronous channel"))
             return
         }

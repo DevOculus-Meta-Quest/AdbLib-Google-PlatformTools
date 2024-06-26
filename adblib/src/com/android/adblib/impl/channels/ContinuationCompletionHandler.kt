@@ -15,12 +15,16 @@
  */
 package com.android.adblib.impl.channels
 
+import com.android.adblib.AdbSessionHost
+import com.android.adblib.adbLogger
 import kotlinx.coroutines.CancellableContinuation
 import java.nio.channels.CompletionHandler
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
 
-internal open class ContinuationCompletionHandler<T> : CompletionHandler<T, CancellableContinuation<Unit>> {
+internal abstract class ContinuationCompletionHandler<T>(host: AdbSessionHost) : CompletionHandler<T, CancellableContinuation<Unit>> {
+
+    private val logger = adbLogger(host)
 
     open fun completed(result: T) {
     }
@@ -29,6 +33,7 @@ internal open class ContinuationCompletionHandler<T> : CompletionHandler<T, Canc
         try {
             completed(result)
         } finally {
+            logger.debug { "'continuation[${continuation.hashCode()}].resume(Unit)', isCompleted=${continuation.isCompleted}, isCancelled=${continuation.isCancelled}" }
             continuation.resume(Unit)
         }
     }
@@ -38,11 +43,14 @@ internal open class ContinuationCompletionHandler<T> : CompletionHandler<T, Canc
     }
 
     override fun failed(e: Throwable, continuation: CancellableContinuation<Unit>) {
+        logger.debug { "'continuation[${continuation.hashCode()}].resumeWithException(wrapError($e))', isCompleted=${continuation.isCompleted}, isCancelled=${continuation.isCancelled}" }
         continuation.resumeWithException(wrapError(e))
     }
 }
 
-internal open class TypedContinuationCompletionHandler<T> : CompletionHandler<T, CancellableContinuation<T>> {
+internal open class TypedContinuationCompletionHandler<T>(host: AdbSessionHost) : CompletionHandler<T, CancellableContinuation<T>> {
+
+    private val logger = adbLogger(host)
 
     open fun completed(result: T) {
     }
@@ -51,6 +59,7 @@ internal open class TypedContinuationCompletionHandler<T> : CompletionHandler<T,
         try {
             completed(result)
         } finally {
+            logger.debug { "'continuation[${continuation.hashCode()}].resume(result)', isCompleted=${continuation.isCompleted}, isCancelled=${continuation.isCancelled}" }
             continuation.resume(result)
         }
     }
@@ -60,6 +69,7 @@ internal open class TypedContinuationCompletionHandler<T> : CompletionHandler<T,
     }
 
     override fun failed(e: Throwable, continuation: CancellableContinuation<T>) {
+        logger.debug { "'continuation[${continuation.hashCode()}].resumeWithException(wrapError($e))', isCompleted=${continuation.isCompleted}, isCancelled=${continuation.isCancelled}" }
         continuation.resumeWithException(wrapError(e))
     }
 }

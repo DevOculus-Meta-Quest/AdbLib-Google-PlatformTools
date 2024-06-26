@@ -18,6 +18,7 @@ package com.android.adblib.impl.channels
 import com.android.adblib.AdbChannel
 import com.android.adblib.AdbServerSocket
 import com.android.adblib.AdbSessionHost
+import com.android.adblib.adbLogger
 import com.android.adblib.utils.closeOnException
 import kotlinx.coroutines.withContext
 import java.net.Inet4Address
@@ -36,7 +37,8 @@ internal class AdbServerSocketImpl(
     private val serverSocketChannel: AsynchronousServerSocketChannel
 ) : AdbServerSocket {
 
-    private val acceptCompletionHandler = TypedContinuationCompletionHandler<AsynchronousSocketChannel>()
+    private val logger = adbLogger(host)
+    private val acceptCompletionHandler = TypedContinuationCompletionHandler<AsynchronousSocketChannel>(host)
 
     override suspend fun localAddress(): InetSocketAddress? {
         return withContext(host.ioDispatcher) {
@@ -63,7 +65,7 @@ internal class AdbServerSocketImpl(
     }
 
     private suspend fun runAccept(): AsynchronousSocketChannel {
-        return suspendChannelCoroutine(host, serverSocketChannel) { continuation ->
+        return suspendChannelCoroutine(logger, serverSocketChannel) { continuation ->
             serverSocketChannel.accept(continuation, acceptCompletionHandler)
         }
     }
