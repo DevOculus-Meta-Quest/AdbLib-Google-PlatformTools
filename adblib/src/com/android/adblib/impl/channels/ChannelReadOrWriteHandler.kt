@@ -29,6 +29,7 @@ import java.nio.channels.AsynchronousFileChannel
 import java.nio.channels.AsynchronousSocketChannel
 import java.nio.channels.Channel
 import java.nio.channels.CompletionHandler
+import java.util.concurrent.ConcurrentLinkedDeque
 import java.util.concurrent.TimeUnit
 import kotlin.coroutines.cancellation.CancellationException
 import kotlin.coroutines.resume
@@ -123,7 +124,7 @@ internal abstract class ChannelReadOrWriteHandler protected constructor(
     /**
      * The [ByteBuffer] used when [runExactly] is active
      */
-    private var buffer: ByteBuffer? = null
+    private var bufferForRunExactly: ByteBuffer? = null
 
     /**
      * The [TimeoutTracker] used when [runExactly] is active
@@ -182,16 +183,16 @@ internal abstract class ChannelReadOrWriteHandler protected constructor(
     }
 
     private fun runExactlyBegin(buffer: ByteBuffer, timeout: Long, unit: TimeUnit) {
-        if (this.buffer != null) {
+        if (this.bufferForRunExactly != null) {
             throw IllegalStateException("An Async I/O operation is still pending")
         }
 
-        this.buffer = buffer
+        this.bufferForRunExactly = buffer
         this.timeoutTracker = TimeoutTracker.fromTimeout(unit, timeout)
     }
 
     private fun runExactlyEnd() {
-        buffer = null
+        bufferForRunExactly = null
         timeoutTracker = null
     }
 
@@ -199,7 +200,7 @@ internal abstract class ChannelReadOrWriteHandler protected constructor(
         try {
             logger.verbose { "Async I/O operation completed successfully ($result bytes)" }
 
-            return if (buffer == null) {
+            return if (bufferForRunExactly == null) {
                 // Not a "runExactly" completion: complete right away
                 finalCompletionCompleted(result, continuation)
             } else {
@@ -217,13 +218,29 @@ internal abstract class ChannelReadOrWriteHandler protected constructor(
         try {
             asyncReadOrWriteCompleted(result)
         } finally {
+            addResumeStackTrace(continuation)
+            if (continuation.isCompleted) {
+                // This is unexpected
+                logger.warn(
+                    "Resuming previously completed continuation.\nPrevious resume calls:\n" +
+                            recentResumeCallStackTraces.toList().joinToString("\n")
+                )
+            }
             logger.debug { "'continuation[${continuation.hashCode()}].resume(Unit)', isCompleted=${continuation.isCompleted}, isCancelled=${continuation.isCancelled}" }
             continuation.resume(Unit)
         }
     }
 
+    private fun addResumeStackTrace(continuation: CancellableContinuation<Unit>) {
+        // Keep at most 10 last stack traces
+        if (recentResumeCallStackTraces.size >= 10) {
+            recentResumeCallStackTraces.poll()
+        }
+        recentResumeCallStackTraces.offer("continuation[${continuation.hashCode()}], timestamp[${System.currentTimeMillis()}], handler[${hashCode()}]:\n${Throwable().stackTraceToString()}")
+    }
+
     private fun runExactlyCompleted(result: Int, continuation: CancellableContinuation<Unit>) {
-        val tempBuffer = buffer ?: internalError("buffer is null")
+        val tempBuffer = bufferForRunExactly ?: internalError("buffer is null")
         if (tempBuffer.remaining() == 0) {
             return finalCompletionCompleted(result, continuation)
         }
@@ -253,6 +270,10 @@ internal abstract class ChannelReadOrWriteHandler protected constructor(
         val error = IllegalStateException("Internal error during Async I/O: $message")
         logger.error(error, message)
         throw error
+    }
+
+    companion object {
+        val recentResumeCallStackTraces = ConcurrentLinkedDeque<String>()
     }
 }
 
