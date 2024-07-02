@@ -219,10 +219,10 @@ internal abstract class ChannelReadOrWriteHandler protected constructor(
             asyncReadOrWriteCompleted(result)
         } finally {
             addResumeStackTrace(continuation)
-            if (continuation.isCompleted) {
+            if (continuation.isCompleted && !continuation.isCancelled) {
                 // This is unexpected
                 logger.warn(
-                    "Resuming previously completed continuation.\nPrevious resume calls:\n" +
+                    "Resuming previously completed continuation[${continuation.hashCode()}].\nPrevious resume calls:\n" +
                             recentResumeCallStackTraces.toList().joinToString("\n")
                 )
             }
