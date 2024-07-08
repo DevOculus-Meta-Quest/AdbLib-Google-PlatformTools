@@ -122,13 +122,17 @@ internal abstract class ChannelReadOrWriteHandler protected constructor(
     }
 
     /**
-     * The [ByteBuffer] used when [runExactly] is active
+     * The [ByteBuffer] used when [runExactly] is active.
+     * It's marked as @Volatile since it's accessed on a different thread from a completion handler.
      */
+    @Volatile
     private var bufferForRunExactly: ByteBuffer? = null
 
     /**
-     * The [TimeoutTracker] used when [runExactly] is active
+     * The [TimeoutTracker] used when [runExactly] is active.
+     * It's marked as @Volatile since it's accessed on a different thread from a completion handler.
      */
+    @Volatile
     private var timeoutTracker: TimeoutTracker? = null
 
     /**
