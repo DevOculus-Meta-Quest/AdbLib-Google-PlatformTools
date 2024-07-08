@@ -44,7 +44,6 @@ import kotlin.coroutines.resumeWithException
  *
  * @see ChannelReadHandler
  * @see ChannelWriteHandler
- * @see ContinuationCompletionHandler
  * @see java.nio.channels.AsynchronousFileChannel
  * @see java.nio.channels.AsynchronousSocketChannel
  * @see java.nio.channels.CompletionHandler
@@ -56,7 +55,7 @@ internal abstract class ChannelReadOrWriteHandler protected constructor(
 
     private val logger = adbLogger(host)
 
-    private val completionHandler = object : ContinuationCompletionHandler<Int>(host) {
+    private val completionHandler = object : CompletionHandler<Int, CancellableContinuation<Unit>> {
         override fun completed(result: Int, continuation: CancellableContinuation<Unit>) {
             completionHandlerCompleted(result, continuation)
         }
@@ -101,7 +100,7 @@ internal abstract class ChannelReadOrWriteHandler protected constructor(
          * scope is already being cancelled (i.e. the coroutine runtime behavior seems
          * to be more deterministic dealing with "cancellation of cancellation").
          */
-        override fun wrapError(e: Throwable): Throwable {
+        private fun wrapError(e: Throwable): Throwable {
             return if (e is AsynchronousCloseException) {
                 CancellationException(e)
             } else {
@@ -116,7 +115,8 @@ internal abstract class ChannelReadOrWriteHandler protected constructor(
                 completionHandlerCompleted(-1, continuation)
             }
             else {
-                super.failed(e, continuation)
+                logger.debug { "'continuation[${continuation.hashCode()}].resumeWithException(wrapError($e))', isCompleted=${continuation.isCompleted}, isCancelled=${continuation.isCancelled}" }
+                continuation.resumeWithException(wrapError(e))
             }
         }
     }
@@ -147,7 +147,7 @@ internal abstract class ChannelReadOrWriteHandler protected constructor(
         timeout: Long,
         unit: TimeUnit,
         continuation: CancellableContinuation<Unit>,
-        completionHandler: ContinuationCompletionHandler<Int>
+        completionHandler: CompletionHandler<Int, CancellableContinuation<Unit>>
     )
 
     /**
@@ -310,7 +310,7 @@ internal abstract class ChannelReadHandler(
         timeout: Long,
         unit: TimeUnit,
         continuation: CancellableContinuation<Unit>,
-        completionHandler: ContinuationCompletionHandler<Int>
+        completionHandler: CompletionHandler<Int, CancellableContinuation<Unit>>
     ) {
         asyncRead(buffer, timeout, unit, continuation, completionHandler)
     }
@@ -324,7 +324,7 @@ internal abstract class ChannelReadHandler(
         timeout: Long,
         unit: TimeUnit,
         continuation: CancellableContinuation<Unit>,
-        completionHandler: ContinuationCompletionHandler<Int>
+        completionHandler: CompletionHandler<Int, CancellableContinuation<Unit>>
     )
 
     protected open fun asyncReadCompleted(byteCount: Int) {
@@ -364,7 +364,7 @@ internal abstract class ChannelWriteHandler(
         timeout: Long,
         unit: TimeUnit,
         continuation: CancellableContinuation<Unit>,
-        completionHandler: ContinuationCompletionHandler<Int>
+        completionHandler: CompletionHandler<Int, CancellableContinuation<Unit>>
     ) {
         asyncWrite(buffer, timeout, unit, continuation, completionHandler)
     }
@@ -378,7 +378,7 @@ internal abstract class ChannelWriteHandler(
         timeout: Long,
         unit: TimeUnit,
         continuation: CancellableContinuation<Unit>,
-        completionHandler: ContinuationCompletionHandler<Int>
+        completionHandler: CompletionHandler<Int, CancellableContinuation<Unit>>
     )
 
     protected open fun asyncWriteCompleted(byteCount: Int) {

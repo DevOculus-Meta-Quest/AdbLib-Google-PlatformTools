@@ -11,7 +11,10 @@ import java.net.InetSocketAddress
 import java.nio.ByteBuffer
 import java.nio.channels.AsynchronousSocketChannel
 import java.nio.channels.ClosedChannelException
+import java.nio.channels.CompletionHandler
 import java.util.concurrent.TimeUnit
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 
 /**
  * Implementation of [AdbChannel] over an [AsynchronousSocketChannel] socket connection
@@ -32,7 +35,7 @@ internal class AdbSocketChannelImpl(
             timeout: Long,
             unit: TimeUnit,
             continuation: CancellableContinuation<Unit>,
-            completionHandler: ContinuationCompletionHandler<Int>
+            completionHandler: CompletionHandler<Int, CancellableContinuation<Unit>>
         ) {
             socketChannel.write(buffer, timeout, unit, continuation, completionHandler)
         }
@@ -47,7 +50,7 @@ internal class AdbSocketChannelImpl(
             timeout: Long,
             unit: TimeUnit,
             continuation: CancellableContinuation<Unit>,
-            completionHandler: ContinuationCompletionHandler<Int>
+            completionHandler: CompletionHandler<Int, CancellableContinuation<Unit>>
         ) {
             socketChannel.read(buffer, timeout, unit, continuation, completionHandler)
         }
@@ -83,13 +86,20 @@ internal class AdbSocketChannelImpl(
 
         // Note: We use a local completion handler so that we can report the address in
         // case of failure.
-        val connectCompletionHandler = object : ContinuationCompletionHandler<Void?>(host) {
+        val connectCompletionHandler = object : CompletionHandler<Void?, CancellableContinuation<Unit>> {
 
-            override fun completed(result: Void?) {
+            override fun completed(result: Void?, continuation: CancellableContinuation<Unit>) {
                 logger.debug { "${loggerPrefix()}: Connection completed successfully" }
+                logger.debug { "'continuation[${continuation.hashCode()}].resume(Unit)', isCompleted=${continuation.isCompleted}, isCancelled=${continuation.isCancelled}" }
+                continuation.resume(Unit)
             }
 
-            override fun wrapError(e: Throwable): Throwable {
+            override fun failed(e: Throwable, continuation: CancellableContinuation<Unit>) {
+                logger.debug { "'continuation[${continuation.hashCode()}].resumeWithException(wrapError($e))', isCompleted=${continuation.isCompleted}, isCancelled=${continuation.isCancelled}" }
+                continuation.resumeWithException(wrapError(e))
+            }
+
+            private fun wrapError(e: Throwable): Throwable {
                 return IOException("Error connecting channel to address '$address'", e)
             }
         }

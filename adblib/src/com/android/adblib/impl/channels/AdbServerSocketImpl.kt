@@ -20,6 +20,7 @@ import com.android.adblib.AdbServerSocket
 import com.android.adblib.AdbSessionHost
 import com.android.adblib.adbLogger
 import com.android.adblib.utils.closeOnException
+import kotlinx.coroutines.CancellableContinuation
 import kotlinx.coroutines.withContext
 import java.net.Inet4Address
 import java.net.InetSocketAddress
@@ -27,6 +28,9 @@ import java.net.StandardSocketOptions
 import java.nio.channels.AsynchronousServerSocketChannel
 import java.nio.channels.AsynchronousSocketChannel
 import java.nio.channels.ClosedChannelException
+import java.nio.channels.CompletionHandler
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 
 /**
  * Coroutine-friendly wrapper around an [AsynchronousServerSocketChannel] with the suspending
@@ -38,7 +42,18 @@ internal class AdbServerSocketImpl(
 ) : AdbServerSocket {
 
     private val logger = adbLogger(host)
-    private val acceptCompletionHandler = TypedContinuationCompletionHandler<AsynchronousSocketChannel>(host)
+    private val acceptCompletionHandler = object: CompletionHandler<AsynchronousSocketChannel, CancellableContinuation<AsynchronousSocketChannel>> {
+
+        override fun completed(result: AsynchronousSocketChannel, continuation: CancellableContinuation<AsynchronousSocketChannel>) {
+            logger.debug { "'continuation[${continuation.hashCode()}].resume(result)', isCompleted=${continuation.isCompleted}, isCancelled=${continuation.isCancelled}" }
+            continuation.resume(result)
+        }
+
+        override fun failed(e: Throwable, continuation: CancellableContinuation<AsynchronousSocketChannel>) {
+            logger.debug { "'continuation[${continuation.hashCode()}].resumeWithException($e)', isCompleted=${continuation.isCompleted}, isCancelled=${continuation.isCancelled}" }
+            continuation.resumeWithException(e)
+        }
+    }
 
     override suspend fun localAddress(): InetSocketAddress? {
         return withContext(host.ioDispatcher) {

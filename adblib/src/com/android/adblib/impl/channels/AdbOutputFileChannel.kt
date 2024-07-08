@@ -21,6 +21,7 @@ import com.android.adblib.adbLogger
 import kotlinx.coroutines.CancellableContinuation
 import java.nio.ByteBuffer
 import java.nio.channels.AsynchronousFileChannel
+import java.nio.channels.CompletionHandler
 import java.nio.file.Path
 import java.util.concurrent.TimeUnit
 
@@ -46,7 +47,7 @@ internal class AdbOutputFileChannel(
             timeout: Long,
             unit: TimeUnit,
             continuation: CancellableContinuation<Unit>,
-            completionHandler: ContinuationCompletionHandler<Int>
+            completionHandler: CompletionHandler<Int, CancellableContinuation<Unit>>
         ) {
             // Note: Timeout is handled by base class because [supportsTimeout] is false
             fileChannel.write(buffer, filePosition, continuation, completionHandler)
