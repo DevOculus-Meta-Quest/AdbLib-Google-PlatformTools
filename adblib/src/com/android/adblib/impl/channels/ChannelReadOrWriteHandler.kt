@@ -57,6 +57,16 @@ internal abstract class ChannelReadOrWriteHandler protected constructor(
 
     private val completionHandler = object : CompletionHandler<Int, CancellableContinuation<Unit>> {
         override fun completed(result: Int, continuation: CancellableContinuation<Unit>) {
+            // We've seen this method occasionally called with a `continuation` in a `Resumed` state.
+            // It is happening on Windows when using async File I/O (see b/338008891)
+            // and we suspect this is a defect in the JDK.
+            // To mitigate this problem we can skip completion handling as the invocation of
+            // `Continuation.resume` or `Continuation.resumeWithException` in a resumed state produces
+            // an `IllegalStateException`, and is ignored in a cancelled state.
+            if (!continuation.isActive) {
+                logger.debug { "CompletionHandler.completed() called for inactive continuation: 'continuation[${continuation.hashCode()}] isCompleted=${continuation.isCompleted}, isCancelled=${continuation.isCancelled}" }
+                return
+            }
             completionHandlerCompleted(result, continuation)
         }
 
@@ -109,6 +119,10 @@ internal abstract class ChannelReadOrWriteHandler protected constructor(
         }
 
         override fun failed(e: Throwable, continuation: CancellableContinuation<Unit>) {
+            if (!continuation.isActive) {
+                logger.debug { "CompletionHandler.failed() called for inactive continuation: 'continuation[${continuation.hashCode()}] isCompleted=${continuation.isCompleted}, isCancelled=${continuation.isCancelled}" }
+                return
+            }
             if (e is IOException &&
                     e.message == "The specified network name is no longer available") {
                 // Treat this Windows-specific exception as the end of channel.
@@ -204,13 +218,20 @@ internal abstract class ChannelReadOrWriteHandler protected constructor(
         try {
             logger.verbose { "Async I/O operation completed successfully ($result bytes)" }
 
-            return if (bufferForRunExactly == null) {
+            if (bufferForRunExactly == null) {
                 // Not a "runExactly" completion: complete right away
-                finalCompletionCompleted(result, continuation)
+                asyncReadOrWriteCompleted(result)
+                logContinuationResume(continuation)
+                continuation.resume(Unit)
             } else {
-                // A "runExactly" completion: start another async operation
-                // if the buffer is not fully processed
-                runExactlyCompleted(result, continuation)
+                // A "runExactly" completion: starts another async operation
+                // if the buffer is not fully processed, and so we should only `resume` continuation
+                // on the last completion.
+                val isFinalCompletion = runExactlyCompleted(result, continuation)
+                if (isFinalCompletion) {
+                    logContinuationResume(continuation)
+                    continuation.resume(Unit)
+                }
             }
         } catch (t: Throwable) {
             logger.debug { "'continuation[${continuation.hashCode()}].resumeWithException($t)', isCompleted=${continuation.isCompleted}, isCancelled=${continuation.isCancelled}" }
@@ -218,20 +239,15 @@ internal abstract class ChannelReadOrWriteHandler protected constructor(
         }
     }
 
-    private fun finalCompletionCompleted(result: Int, continuation: CancellableContinuation<Unit>) {
-        try {
-            asyncReadOrWriteCompleted(result)
-        } finally {
-            addResumeStackTrace(continuation)
-            if (continuation.isCompleted && !continuation.isCancelled) {
-                // This is unexpected
-                logger.warn(
-                    "Resuming previously completed continuation[${continuation.hashCode()}].\nPrevious resume calls:\n" +
-                            recentResumeCallStackTraces.toList().joinToString("\n")
-                )
-            }
-            logger.debug { "'continuation[${continuation.hashCode()}].resume(Unit)', isCompleted=${continuation.isCompleted}, isCancelled=${continuation.isCancelled}" }
-            continuation.resume(Unit)
+    private fun logContinuationResume(continuation: CancellableContinuation<Unit>) {
+        logger.debug { "'continuation[${continuation.hashCode()}].resume(Unit)', isCompleted=${continuation.isCompleted}, isCancelled=${continuation.isCancelled}, isRunExactly=${bufferForRunExactly != null}" }
+        addResumeStackTrace(continuation)
+        if (continuation.isCompleted && !continuation.isCancelled) {
+            // This is unexpected
+            logger.warn(
+                "Resuming previously completed continuation[${continuation.hashCode()}].\nPrevious resume calls:\n" +
+                        recentResumeCallStackTraces.toList().joinToString("\n")
+            )
         }
     }
 
@@ -243,31 +259,41 @@ internal abstract class ChannelReadOrWriteHandler protected constructor(
         recentResumeCallStackTraces.offer("continuation[${continuation.hashCode()}], timestamp[${System.currentTimeMillis()}], handler[${hashCode()}]:\n${Throwable().stackTraceToString()}")
     }
 
-    private fun runExactlyCompleted(result: Int, continuation: CancellableContinuation<Unit>) {
+    /**
+     * This method is called by a completion handler when executing a `runExactly` operation.
+     * Returns `true` if the buffer has been completely processed. Otherwise, triggers a further
+     * async read or write and returns `false`.
+     * Throws `EOFException` if EOF is reached during a read operation.
+     */
+    private fun runExactlyCompleted(
+        result: Int,
+        continuation: CancellableContinuation<Unit>
+    ): Boolean {
         val tempBuffer = bufferForRunExactly ?: internalError("buffer is null")
         if (tempBuffer.remaining() == 0) {
-            return finalCompletionCompleted(result, continuation)
+            // Buffer is now completely processed
+            asyncReadOrWriteCompleted(result)
+            return true
         }
 
         // EOF, stop reading more (-1 never happens with a "write" operation)
         if (result == -1) {
             logger.verbose { "Reached EOF" }
-            logger.debug { "'continuation[${continuation.hashCode()}].resumeWithException(EOFException(EOF))', isCompleted=${continuation.isCompleted}, isCancelled=${continuation.isCancelled}" }
-            continuation.resumeWithException(EOFException("Unexpected end of asynchronous channel"))
-            return
+            throw EOFException("Unexpected end of asynchronous channel")
         }
 
         // One more async read/write since buffer is not full and channel is not EOF
         asyncReadOrWriteCompleted(result)
 
         val tempTimeoutTracker = timeoutTracker ?: internalError("timeout tracker is null")
-        return asyncReadOrWrite(
+        asyncReadOrWrite(
             tempBuffer,
             tempTimeoutTracker.remainingMills,
             TimeUnit.MILLISECONDS,
             continuation,
             completionHandler
         )
+        return false
     }
 
     private fun internalError(message: String): Nothing {
