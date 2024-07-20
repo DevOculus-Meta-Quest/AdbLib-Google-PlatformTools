@@ -1,0 +1,15 @@
+adblib/
+├── build.gradle.kts
+├── settings.gradle.kts
+├── src/
+│   └── com/
+│       └── android/
+│           └── adblib/
+│               └── Main.kt
+├── test/
+│   └── com/
+│       └── android/
+│           └── adblib/
+│               └── ExampleUnitTest.kt
+├── .gitignore
+└── README.md
