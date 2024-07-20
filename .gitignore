@@ -1,0 +1,111 @@
+# Bazel
+bazel-*
+bazel-out/
+bazel-bin/
+bazel-genfiles/
+bazel-testlogs/
+.tools/
+bazel-*/*/bazel-out
+bazel-*/*/bazel-bin
+bazel-*/*/bazel-genfiles
+bazel-*/*/bazel-testlogs
+
+# Build artifacts
+*.class
+*.jar
+*.war
+*.ear
+*.dll
+*.exe
+*.out
+*.o
+
+# Java/Kotlin specific
+*.log
+*.csv
+*.dat
+*.bin
+*.backup
+*.swp
+*.tmp
+*.temp
+*.DS_Store
+
+# Directories
+bin/
+gen/
+build/
+libs/
+out/
+tmp/
+.idea/
+.gradle/
+.mvn/
+target/
+build/
+
+# Maven
+*.iml
+*.ipr
+*.iws
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Icon?
+ehthumbs.db
+Thumbs.db
+
+# Kotlin specific
+*.kotlin_metadata
+*.kotlin_module
+*.kt.swp
+*.kts.swp
+
+# IDE specific
+*.idea/
+*.vscode/
+*.classpath
+*.project
+*.settings/
+*.factorypath
+
+# Logs
+logs
+*.log
+*.pid
+*.seed
+*.sublime-project
+*.sublime-workspace
+
+# Gradle
+.gradle/
+build/
+
+# Bazel
+bazel-bin/
+bazel-out/
+bazel-testlogs/
+bazel-*
+bazel-*/**
+bazel-out/
+bazel-bin/
+bazel-genfiles/
+bazel-testlogs/
+bazel-*/*/bazel-out
+bazel-*/*/bazel-bin
+bazel-*/*/bazel-genfiles
+bazel-*/*/bazel-testlogs
+
+# Bazel crash log
+java.log
+server.*
+src/main/java/**/*.class
+src/test/java/**/*.class
+
+# Miscellaneous
+*~
+*.swp
