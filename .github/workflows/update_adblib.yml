@@ -1,0 +1,38 @@
+name: Update adblib from base
+
+on:
+  schedule:
+    - cron: '0 0 * * *' # This runs the workflow every day at midnight. Adjust the schedule as needed.
+  workflow_dispatch:
+
+jobs:
+  update-adblib:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout the base repository
+      uses: actions/checkout@v2
+      with:
+        repository: android/platform/tools/base
+        ref: mirror-goog-studio-main
+
+    - name: Install git-filter-repo
+      run: sudo apt-get install -y git-filter-repo
+
+    - name: Filter adblib directory
+      run: |
+        git filter-repo --path adblib --path-rename adblib:temp/adblib --force
+
+    - name: Move adblib to root and preserve .github
+      run: |
+        mv temp/adblib/* .
+        rm -rf temp
+        git add .
+        git commit -m "Move adblib to root and preserve .github"
+
+    - name: Push changes to the adblib repository
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        git remote set-url origin https://github.com/your-username/your-adblib-repo.git
+        git push origin HEAD:main --force
