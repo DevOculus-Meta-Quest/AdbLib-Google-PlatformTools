@@ -1,6 +1,9 @@
+# Workspace file content
+workspace(name = "adblib")
+
+# Kotlin rules setup
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
-# Kotlin rules
 KOTLIN = (
     "1.7.1",
     "fd92a98bd8a8f0e1cdcb490b93f5acef1f1727ed992571232d33de42395ca9b3",
@@ -17,7 +20,7 @@ kotlin_repositories()
 load("@io_bazel_rules_kotlin//kotlin:core.bzl", "kt_register_toolchains")
 kt_register_toolchains()
 
-# Protobuf rules
+# Protobuf rules setup
 PROTOBUF = (
     "5.3.0-21.7",
     "dc3fb206a2cb3441b485eb1e423165b231235a1ea9b031b4433cf7bc1fa460dd",
@@ -36,7 +39,7 @@ load("@rules_proto//proto:repositories.bzl", "rules_proto_dependencies", "rules_
 rules_proto_dependencies()
 rules_proto_toolchains()
 
-# Java Protobuf rules
+# Java Protobuf rules setup
 JAVA_PROTOBUF = (
     "5.4.0",
     "9b87757af5c77e9db5f7c000579309afae75cf6517da745de01ba0c6e4870951"
@@ -52,7 +55,7 @@ load("@rules_java//java:repositories.bzl", "rules_java_dependencies", "rules_jav
 rules_java_dependencies()
 rules_java_toolchains()
 
-# JVM external rules
+# JVM external rules setup
 JVM_EXTERNAL = (
     "4.5",
     "b17d7388feb9bfa7f2fa09031b32707df529f26c91ab9e5d909eb1676badd9a6",
@@ -70,7 +73,7 @@ rules_jvm_external_deps()
 load("@rules_jvm_external//:setup.bzl", "rules_jvm_external_setup")
 rules_jvm_external_setup()
 
-# External dependencies
+# External dependencies setup
 load("@rules_jvm_external//:defs.bzl", "maven_install")
 maven_install(
     artifacts = [
