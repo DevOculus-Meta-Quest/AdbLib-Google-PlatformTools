@@ -1,0 +1,184 @@
+load("//tools/base/bazel:maven.bzl", "maven_repository")
+
+# This Maven repository contains artifacts that are built by Bazel, but also needed by
+# AGP build. The AGP build uses this repo so that it does not have to rebuild the same
+# artifacts again.
+
+# These direct dependencies are manually added to satisfy gradle
+maven_repository(
+    name = "agp_dependencies",
+    # keep sorted
+    artifacts = [
+        "@maven//:com.android.tools.build.bundletool",
+        "@maven//:com.android.tools.build.jetifier.jetifier-processor",
+        "@maven//:com.android.tools.build.transform-api",
+        "@maven//:com.github.javaparser.javaparser-core",
+        "@maven//:com.google.apis.google-api-services-storage_v1-rev82-1.22.0",
+        "@maven//:com.google.crypto.tink.tink",
+        "@maven//:com.google.guava.guava",
+        "@maven//:com.google.guava.guava-testlib",
+        "@maven//:com.google.jimfs.jimfs",
+        "@maven//:com.google.protobuf.protobuf-bom_3.17.2",
+        "@maven//:com.google.protobuf.protobuf-gradle-plugin",
+        "@maven//:com.google.protobuf.protoc_3.22.3",
+        "@maven//:com.google.testing.platform.core-proto",
+        "@maven//:com.google.truth.extensions.truth-java8-extension",
+        "@maven//:com.googlecode.jarjar.jarjar",
+        "@maven//:com.googlecode.juniversalchardet.juniversalchardet",
+        "@maven//:com.squareup.javapoet",
+        "@maven//:com.squareup.javawriter",
+        "@maven//:com.sun.activation.javax.activation",
+        "@maven//:commons-io.commons-io",
+        "@maven//:commons-lang.commons-lang",
+        "@maven//:gradle.plugin.org.jetbrains.gradle.plugin.idea-ext.gradle-idea-ext",
+        "@maven//:io.grpc.grpc-all",
+        "@maven//:io.grpc.protoc-gen-grpc-java_1.57.0",
+        "@maven//:io.netty.netty-all",
+        "@maven//:javax.annotation.javax.annotation-api",
+        "@maven//:net.java.dev.jna.jna-platform",
+        "@maven//:net.sf.jopt-simple.jopt-simple",
+        "@maven//:net.sf.kxml.kxml2",
+        "@maven//:net.sf.proguard.proguard-gradle",
+        "@maven//:nl.jqno.equalsverifier.equalsverifier",
+        "@maven//:org.apache.commons.commons-compress",
+        "@maven//:org.apache.httpcomponents.httpmime",
+        "@maven//:org.apache.maven.maven-aether-provider",
+        "@maven//:org.bouncycastle.bcpkix-jdk18on",
+        "@maven//:org.bouncycastle.bcprov-jdk18on",
+        "@maven//:org.codehaus.groovy.groovy-all",
+        "@maven//:org.eclipse.aether.aether-connector-basic",
+        "@maven//:org.eclipse.aether.aether-transport-file",
+        "@maven//:org.eclipse.aether.aether-transport-http",
+        "@maven//:org.glassfish.jaxb.jaxb-xjc",
+        "@maven//:org.gradle.gradle-tooling-api",
+        "@maven//:org.jacoco.org.jacoco.agent",
+        "@maven//:org.jacoco.org.jacoco.report",
+        "@maven//:org.jetbrains.dokka.dokka-core",
+        "@maven//:org.jetbrains.kotlin.jvm.org.jetbrains.kotlin.jvm.gradle.plugin",
+        "@maven//:org.jetbrains.kotlin.kotlin-compiler",
+        "@maven//:org.jetbrains.kotlin.kotlin-gradle-plugin-api",
+        "@maven//:org.jetbrains.kotlin.kotlin-stdlib-jdk8",
+        "@maven//:org.jetbrains.kotlin.kotlin-test",
+        "@maven//:org.jetbrains.kotlin.kotlin-test-junit",
+        "@maven//:org.jetbrains.kotlinx.kotlinx-coroutines-android_1.6.4",
+        "@maven//:org.jetbrains.kotlinx.kotlinx-coroutines-core_1.4.1",
+        "@maven//:org.jetbrains.markdown",
+        "@maven//:org.junit.junit-bom_5.9.2",
+        "@maven//:org.junit.junit-bom_5.9.3",
+        "@maven//:org.mockito.mockito-core",
+        "@maven//:org.ow2.asm.asm-analysis_9.6",
+        "@maven//:org.ow2.asm.asm-bom_9.6",
+        "@maven//:org.ow2.asm.asm-commons_9.6",
+        "@maven//:org.ow2.asm.asm-tree_9.6",
+        "@maven//:org.ow2.asm.asm-util_9.6",
+        "@maven//:org.ow2.asm.asm_9.6",
+        "@maven//:org.tensorflow.tensorflow-lite-metadata",
+        "@maven//:org.tomlj.tomlj",
+    ],
+    visibility = [
+        "//tools/base/bazel/test/gradle:__pkg__",
+        "//tools/base/build-system:__pkg__",
+        "//tools/base/build-system/integration-test:__subpackages__",
+        "//tools/base/firebase/testlab/testlab-gradle-plugin:__pkg__",
+        "//tools/base/preview/screenshot/screenshot-test-gradle-plugin:__pkg__",
+    ],
+)
+
+# keep sorted
+AGP_ARTIFACTS = [
+    "//tools/analytics-library/crash:tools.analytics-crash",
+    "//tools/analytics-library/protos/src/main/proto:proto",
+    "//tools/analytics-library/shared:tools.analytics-shared",
+    "//tools/analytics-library/tracker:tools.analytics-tracker",
+    "//tools/apkzlib",
+    "//tools/base/annotations:annotations",
+    "//tools/base/build-system:tools.apksig",
+    "//tools/base/common:tools.common",
+    "//tools/base/ddmlib:tools.ddmlib",
+    "//tools/base/device_validator:tools.dvlib",
+    "//tools/base/layoutlib-api:tools.layoutlib-api",
+    "//tools/base/lint:lint-checks-proto",
+    "//tools/base/lint:tools.lint-model",
+    "//tools/base/lint/libs/lint-typedef-remover",
+    "//tools/base/multipreview-asm:compose-preview-detector",
+    "//tools/base/repository:tools.repository",
+    "//tools/base/sdk-common:tools.sdk-common",
+    "//tools/base/sdklib:tools.sdklib",
+    "//tools/base/signflinger",
+    "//tools/base/utp/android-device-provider-ddmlib-proto",
+    "//tools/base/utp/android-device-provider-gradle-proto",
+    "//tools/base/utp/android-test-plugin-host-additional-test-output-proto",
+    "//tools/base/utp/android-test-plugin-host-apk-installer-proto",
+    "//tools/base/utp/android-test-plugin-host-coverage-proto",
+    "//tools/base/utp/android-test-plugin-host-emulator-control-proto",
+    "//tools/base/utp/android-test-plugin-host-logcat-proto",
+    "//tools/base/utp/android-test-plugin-host-retention-proto",
+    "//tools/base/utp/android-test-plugin-result-listener-gradle-proto",
+    "//tools/base/utp/utp-common",
+    "//tools/base/zipflinger",
+    "//tools/data-binding:tools.baseLibrary",
+    "//tools/data-binding:tools.baseLibrarySupport",
+    "//tools/data-binding:tools.compilerCommon",
+]
+
+maven_repository(
+    name = "agp_artifacts",
+    artifacts = AGP_ARTIFACTS,
+    include_transitive_deps = False,
+    visibility = [
+        "//tools/base/bazel/test/gradle:__pkg__",
+        "//tools/base/build-system:__pkg__",
+        "//tools/base/firebase/testlab/testlab-gradle-plugin:__pkg__",
+        "//tools/base/gmaven:__pkg__",
+        "//tools/base/preview/screenshot/screenshot-test-gradle-plugin:__pkg__",
+    ],
+)
+
+AGP_TEST_ARTIFACTS = [
+    "//tools/analytics-library/testing:tools.analytics-testing",  # TODO: Only required for AGP tests
+    "//tools/base/apkparser/analyzer:tools.analyzer.maven",  # TODO(b/143864616): Only required for tests
+    "//tools/base/apkparser:tools.binary-resources",  # TODO(b/143864616): Only required for tests
+    "//tools/base/emulator/proto",  # Used for UTP
+    "//tools/base/lint:tools.lint-gradle",  # TODO(b/143864616): Only used for tests
+    "//tools/base/lint/cli",  # TODO(b/143864616): Only used for tests
+    "//tools/base/lint:tools.lint-api",  # TODO(b/143864616): Only used for tests
+    "//tools/base/lint:tools.lint-checks",  # TODO(b/143864616): Only used for tests
+    "//tools/base/preview/screenshot/screenshot-validation-junit-engine",  # Used for preview screenshot testing
+    "//tools/base/standalone-render/compose-cli:compose-preview-renderer",  # Used for preview screenshot testing
+    "//tools/base/standalone-render/compose-cli-serialize:compose-preview-renderer-model",  # Used for preview screenshot testing
+    "//tools/base/utp/android-test-plugin-host-device-info-proto",  # Used for UTP
+    "//prebuilts/tools/common/lint-psi/intellij-core",  # TODO(b/143864616): Only used for tests
+    "//prebuilts/tools/common/lint-psi/kotlin-compiler",  # TODO(b/143864616): Only used for tests
+    "//prebuilts/tools/common/lint-psi/uast",  # TODO(b/143864616): Only used for tests
+    "//tools/base/lint/libs/lint-tests",  # TODO(b/143864616): Only used for tests
+    "//tools/data-binding:tools.compiler",  # TODO(b/143864616): Only used for data binding runtime & tests
+    "//tools/base/fakeadbserver:tools.fakeadbserver",  # TODO(b/143864616): Only used for tests
+    "//tools/base/testutils:tools.testutils",  # TODO(b/143864616): Only used for tests
+    "//tools/base/ddmlib:tools.ddmlib.test",  # TODO(b/143864616): Only used for tests
+]
+
+# Test only dependencies that are not published to gmaven,
+# and are now just directly consumed as jars
+AGP_TEST_DEPENDENCIES = [
+    "//tools/base/common:libtools.fixtures.jar",
+    "//tools/base/repository:libtools.testlib.jar",
+    "//tools/base/apkparser/cli:libtools.analyzer-cli.jar",
+]
+
+maven_repository(
+    name = "agp_test_artifacts",
+    artifacts = AGP_ARTIFACTS + AGP_TEST_ARTIFACTS,
+    include_transitive_deps = False,
+)
+
+# The Android Gradle Plugin gradle build invokes this to
+# prepare the repository of artifacts to compile (and run) against
+java_binary(
+    name = "agp_artifacts_dir",
+    data = [":agp_test_artifacts"] + AGP_TEST_DEPENDENCIES,
+    jvm_flags = [
+        "-Dartifacts_manifest_file=tools/base/agp_test_artifacts.manifest",
+    ],
+    main_class = "com.android.testutils.RepoLinker",
+    runtime_deps = ["//tools/base/testutils:tools.testutils"],
+)
